@@ -5,6 +5,7 @@ import { useState } from 'react';
 
 interface ChannelSearchProps {
   onChannelSelect: (channelId: string) => void;
+  headingText?: string;
 }
 
 interface ChannelResult {
@@ -22,7 +23,10 @@ interface ChannelResult {
   };
 }
 
-export default function ChannelSearch({ onChannelSelect }: ChannelSearchProps) {
+export default function ChannelSearch({ 
+  onChannelSelect, 
+  headingText = ""
+}: ChannelSearchProps) {
   const [query, setQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState<ChannelResult[]>([]);
@@ -58,15 +62,14 @@ export default function ChannelSearch({ onChannelSelect }: ChannelSearchProps) {
 
   return (
     <div className="w-full max-w-3xl mx-auto p-4">
-      <h2 className="text-2xl font-bold mb-4 text-black">YouTube Channel Explorer</h2>
-      
+      <h2 className="text-2xl font-bold mb-4 text-black">{headingText}</h2>     
       <form onSubmit={handleSearch} className="mb-6">
         <div className="flex gap-2">
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search your favourite YouTube channel"
+            placeholder="MrBeast?"
             className="flex-1 p-2 border border-gray-300 rounded-md text-black"
             required
           />

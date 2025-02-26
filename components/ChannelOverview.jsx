@@ -112,127 +112,139 @@ export default function ChannelOverview({ channelId }) {
   const { channelInfo } = channelData;
   
   return (
-    <div className="w-full space-y-6">
-      <motion.div 
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="p-6 rounded-xl bg-white border border-gray-200 shadow-sm"
-      >
-        <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
-          <motion.img 
-            initial={{ scale: 0.95 }}
-            animate={{ scale: 1 }}
-            transition={{ duration: 0.4 }}
-            src={channelInfo.snippet.thumbnails.high.url} 
-            alt={channelInfo.snippet.title}
-            className="w-24 h-24 md:w-32 md:h-32 rounded-lg object-cover shadow-sm"
-          />
-          
-          <div className="flex-1 text-center md:text-left">
-            <h1 className="text-2xl font-semibold mb-2 text-gray-900">{channelInfo.snippet.title}</h1>
-            <p className="text-gray-600 text-sm mb-4">{channelInfo.snippet.description ? channelInfo.snippet.description.substring(0, 200) + (channelInfo.snippet.description.length > 120 ? '...' : '') : 'No description available'}</p>
+    <div className="w-full px-2 sm:px-0 pb-20">
+      <div className="space-y-6">
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="p-4 sm:p-6 rounded-xl bg-white border border-gray-200 shadow-sm"
+        >
+          <div className="flex flex-col md:flex-row items-center md:items-start gap-4 sm:gap-6">
+            <motion.img 
+              initial={{ scale: 0.95 }}
+              animate={{ scale: 1 }}
+              transition={{ duration: 0.4 }}
+              src={channelInfo.snippet.thumbnails.high.url} 
+              alt={channelInfo.snippet.title}
+              className="w-20 h-20 sm:w-24 sm:h-24 md:w-32 md:h-32 rounded-lg object-cover shadow-sm"
+            />
             
-            <div className="grid grid-cols-3 gap-4 mt-4">
-              <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.3, delay: 0.1 }}
-                whileHover={{ y: -2, boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)" }}
-                className="p-4 rounded-lg bg-gray-50 border border-gray-100"
-              >
-                <div className="flex items-center justify-center md:justify-start gap-2 mb-2">
-                  <Users size={18} className="text-red-500" />
-                  <p className="text-sm font-medium text-gray-600">Subscribers</p>
-                </div>
-                <p className="text-xl font-bold text-gray-900 text-center md:text-left">{formatNumber(channelInfo.statistics.subscriberCount)}</p>
-              </motion.div>
+            <div className="flex-1 text-center md:text-left">
+              <h1 className="text-xl sm:text-2xl font-semibold mb-2 text-gray-900">{channelInfo.snippet.title}</h1>
+              <p className="text-gray-600 text-xs sm:text-sm mb-3 sm:mb-4">
+                {channelInfo.snippet.description 
+                  ? channelInfo.snippet.description.substring(0, 150) + (channelInfo.snippet.description.length > 150 ? '...' : '') 
+                  : 'No description available'}
+              </p>
               
-              <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.3, delay: 0.2 }}
-                whileHover={{ y: -2, boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)" }}
-                className="p-4 rounded-lg bg-gray-50 border border-gray-100"
-              >
-                <div className="flex items-center justify-center md:justify-start gap-2 mb-2">
-                  <BarChart2 size={18} className="text-blue-500" />
-                  <p className="text-sm font-medium text-gray-600">Videos</p>
-                </div>
-                <p className="text-xl font-bold text-gray-900 text-center md:text-left">{formatNumber(channelInfo.statistics.videoCount)}</p>
-              </motion.div>
-              
-              <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.3, delay: 0.3 }}
-                whileHover={{ y: -2, boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)" }}
-                className="p-4 rounded-lg bg-gray-50 border border-gray-100"
-              >
-                <div className="flex items-center justify-center md:justify-start gap-2 mb-2">
-                  <Eye size={18} className="text-green-500" />
-                  <p className="text-sm font-medium text-gray-600">Total Views</p>
-                </div>
-                <p className="text-xl font-bold text-gray-900 text-center md:text-left">{formatNumber(channelInfo.statistics.viewCount)}</p>
-              </motion.div>
+              <div className="grid grid-cols-3 gap-2 sm:gap-4 mt-3 sm:mt-4">
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.3, delay: 0.1 }}
+                  whileHover={{ y: -2, boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)" }}
+                  className="p-2 sm:p-4 rounded-lg bg-gray-50 border border-gray-100"
+                >
+                  <div className="flex items-center justify-center md:justify-start gap-1 sm:gap-2 mb-1 sm:mb-2">
+                    <Users size={16} className="text-red-500" />
+                    <p className="text-xs sm:text-sm font-medium text-gray-600">Subscribers</p>
+                  </div>
+                  <p className="text-sm sm:text-xl font-bold text-gray-900 text-center md:text-left">{formatNumber(channelInfo.statistics.subscriberCount)}</p>
+                </motion.div>
+                
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.3, delay: 0.2 }}
+                  whileHover={{ y: -2, boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)" }}
+                  className="p-2 sm:p-4 rounded-lg bg-gray-50 border border-gray-100"
+                >
+                  <div className="flex items-center justify-center md:justify-start gap-1 sm:gap-2 mb-1 sm:mb-2">
+                    <BarChart2 size={16} className="text-blue-500" />
+                    <p className="text-xs sm:text-sm font-medium text-gray-600">Videos</p>
+                  </div>
+                  <p className="text-sm sm:text-xl font-bold text-gray-900 text-center md:text-left">{formatNumber(channelInfo.statistics.videoCount)}</p>
+                </motion.div>
+                
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.3, delay: 0.3 }}
+                  whileHover={{ y: -2, boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)" }}
+                  className="p-2 sm:p-4 rounded-lg bg-gray-50 border border-gray-100"
+                >
+                  <div className="flex items-center justify-center md:justify-start gap-1 sm:gap-2 mb-1 sm:mb-2">
+                    <Eye size={16} className="text-green-500" />
+                    <p className="text-xs sm:text-sm font-medium text-gray-600">Total Views</p>
+                  </div>
+                  <p className="text-sm sm:text-xl font-bold text-gray-900 text-center md:text-left">{formatNumber(channelInfo.statistics.viewCount)}</p>
+                </motion.div>
+              </div>
             </div>
           </div>
-    
-          <div className="w-full md:w-auto relative">
-            <div className="flex flex-col gap-2">
-              <motion.button 
-                onClick={handleOpenSearchDialog}
-                whileHover={{ y: -2 }}
-                whileTap={{ scale: 0.95 }}
-                className="w-12 h-12 flex items-center justify-center rounded-full bg-red-600 border border-red-500 text-white text-xl font-medium transition-all hover:bg-red-700 shadow-sm"
+        </motion.div>
+        
+        {/* Navigation Tabs */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4, delay: 0.2 }}
+          className="overflow-x-auto pb-2 sticky top-0 bg-white z-10 pt-2"
+        >
+          <div className="flex gap-2 min-w-max">
+            {['overview', 'content', 'audience', 'engagement', 'comparison'].map((tab, index) => (
+              <motion.button
+                key={tab}
+                className={`flex items-center gap-1 px-3 sm:px-5 py-2 sm:py-3 rounded-md transition-all text-sm sm:text-base font-medium ${
+                  activeTab === tab 
+                    ? "bg-red-50 text-red-600 border border-red-100" 
+                    : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-100 hover:text-gray-900"
+                }`}
+                onClick={() => setActiveTab(tab)}
+                whileHover={{ y: -1 }}
+                whileTap={{ scale: 0.98 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.05 * index }}
               >
-                {compareChannelName ? '-' : '+'}
+                <span>{tab.charAt(0).toUpperCase() + tab.slice(1)}</span>
               </motion.button>
-            </div>
+            ))}
           </div>
-        </div>
-      </motion.div>
+        </motion.div>
+        
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.3 }}
+          className="p-4 sm:p-6 rounded-xl bg-white border border-gray-200 shadow-sm"
+        >
+          <div className="h-48 sm:h-64 bg-gray-50 rounded-lg flex items-center justify-center text-gray-500 border border-gray-100 text-sm sm:text-base text-center px-4">
+            {activeTab === 'overview' && 'Channel performance overview charts will appear here'}
+            {activeTab === 'content' && 'Content performance analytics will appear here'}
+            {activeTab === 'audience' && 'Audience demographics will appear here'}
+            {activeTab === 'engagement' && 'Engagement metrics will appear here'}
+            {activeTab === 'comparison' && (compareChannelData ? 'Comparison data will appear here' : 'Select a channel to compare first')}
+          </div>
+        </motion.div>
+      </div>
       
-      {/* Navigation Tabs */}
-      <motion.nav
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.4, delay: 0.2 }}
-        className="flex flex-wrap gap-2"
+      {/* Fixed Compare Button */}
+      <motion.div 
+        className="fixed bottom-6 right-6 z-20"
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ delay: 0.6 }}
       >
-        {['overview', 'content', 'audience', 'engagement', 'comparison'].map((tab, index) => (
-          <motion.button
-            key={tab}
-            className={`flex items-center gap-2 px-5 py-3 rounded-md transition-all font-medium ${
-              activeTab === tab 
-                ? "bg-red-50 text-red-600 border border-red-100" 
-                : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-100 hover:text-gray-900"
-            }`}
-            onClick={() => setActiveTab(tab)}
-            whileHover={{ y: -1 }}
-            whileTap={{ scale: 0.98 }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.05 * index }}
-          >
-            <span>{tab.charAt(0).toUpperCase() + tab.slice(1)}</span>
-          </motion.button>
-        ))}
-      </motion.nav>
-      
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.3 }}
-        className="p-6 rounded-xl bg-white border border-gray-200 shadow-sm"
-      >
-        <div className="h-64 bg-gray-50 rounded-lg flex items-center justify-center text-gray-500 border border-gray-100">
-          {activeTab === 'overview' && 'Channel performance overview charts will appear here'}
-          {activeTab === 'content' && 'Content performance analytics will appear here'}
-          {activeTab === 'audience' && 'Audience demographics will appear here'}
-          {activeTab === 'engagement' && 'Engagement metrics will appear here'}
-          {activeTab === 'comparison' && (compareChannelData ? 'Comparison data will appear here' : 'Select a channel to compare first')}
-        </div>
+        <motion.button 
+          onClick={handleOpenSearchDialog}
+          whileHover={{ y: -2 }}
+          whileTap={{ scale: 0.95 }}
+          className="w-12 h-12 flex items-center justify-center rounded-full bg-red-600 border border-red-500 text-white text-xl font-medium transition-all hover:bg-red-700 shadow-md"
+        >
+          {compareChannelName ? '-' : '+'}
+        </motion.button>
       </motion.div>
       
       {/* Search Dialog */}
@@ -242,29 +254,28 @@ export default function ChannelOverview({ channelId }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-gray-500/30 backdrop-blur-sm flex items-center justify-center z-50"
+            className="fixed inset-0 bg-gray-500/30 backdrop-blur-sm flex items-center justify-center z-50 p-4"
             onClick={handleCloseSearchDialog}
           >
             <motion.div 
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white rounded-xl border border-gray-200 shadow-lg max-w-3xl w-full max-h-[80vh] overflow-y-auto"
+              className="bg-white rounded-xl border border-gray-200 shadow-lg w-full max-w-3xl max-h-[80vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex justify-between items-center p-4 border-b border-gray-200">
-                <h2 className="text-xl font-semibold text-gray-900">Search for a channel to compare</h2>
+              <div className="flex justify-between items-center p-3 sm:p-4 border-b border-gray-200">
                 <button 
                   onClick={handleCloseSearchDialog}
                   className="text-gray-500 hover:text-gray-700"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
               </div>
-              <div className="p-4">
-                <ChannelSearch onChannelSelect={handleChannelSelect} />
+              <div className="p-3 sm:p-4">
+                <ChannelSearch onChannelSelect={handleChannelSelect} headingText="Compare with your favourite youtube channels?" />
               </div>
             </motion.div>
           </motion.div>
