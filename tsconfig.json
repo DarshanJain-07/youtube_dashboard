@@ -22,6 +22,6 @@
       "@/*": ["./*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "components/ChannelOverview.jsx", "components/ChannelSearchjtsx"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "components/ChannelOverview.tsx", "components/ChannelSearchjtsx"],
   "exclude": ["node_modules"]
 }
