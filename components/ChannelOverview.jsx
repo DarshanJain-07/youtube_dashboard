@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react';
+//components/ChannelOverview.tsx
+import { useState, useEffect, React } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import ChannelSearch from './ChannelSearch';
-import { BarChart2, Users, Eye } from "lucide-react";
+import { Users, BarChart2, Eye } from 'lucide-react';
+
 
 export default function ChannelOverview({ channelId }) {
   const router = useRouter();
@@ -137,48 +139,74 @@ export default function ChannelOverview({ channelId }) {
                   ? channelInfo.snippet.description.substring(0, 150) + (channelInfo.snippet.description.length > 150 ? '...' : '') 
                   : 'No description available'}
               </p>
-              
-              <div className="grid grid-cols-3 gap-2 sm:gap-4 mt-3 sm:mt-4">
+              <div className="grid grid-cols-3 gap-6 mt-8 px-4">
+                {/* Subscribers Card */}
                 <motion.div 
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.3, delay: 0.1 }}
-                  whileHover={{ y: -2, boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)" }}
-                  className="p-2 sm:p-4 rounded-lg bg-gray-50 border border-gray-100"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.1 }}
+                  whileHover={{ 
+                    y: -8, 
+                    scale: 1.05,
+                    transition: { type: "spring", stiffness: 300 }
+                  }}
+                  className="relative overflow-hidden p-6 rounded-xl bg-gradient-to-br from-rose-50 to-red-100 border border-red-200 shadow-lg"
                 >
-                  <div className="flex items-center justify-center md:justify-start gap-1 sm:gap-2 mb-1 sm:mb-2">
-                    <Users size={16} className="text-red-500" />
-                    <p className="text-xs sm:text-sm font-medium text-gray-600">Subscribers</p>
+                  <div className="absolute -right-4 -top-4 w-24 h-24 rounded-full bg-red-500/10 blur-xl"></div>
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 bg-red-500 rounded-lg shadow-md">
+                      <Users size={20} className="text-white" />
+                    </div>
+                    <p className="text-sm font-semibold text-red-700">Subscribers</p>
                   </div>
-                  <p className="text-sm sm:text-xl font-bold text-gray-900 text-center md:text-left">{formatNumber(channelInfo.statistics.subscriberCount)}</p>
+                  <p className="text-3xl font-bold text-red-900">{formatNumber(channelInfo.statistics.subscriberCount)}</p>
+                  <div className="absolute bottom-0 right-0 w-1/3 h-1 bg-red-500 rounded-tl-lg"></div>
                 </motion.div>
                 
+                {/* Videos Card */}
                 <motion.div 
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.3, delay: 0.2 }}
-                  whileHover={{ y: -2, boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)" }}
-                  className="p-2 sm:p-4 rounded-lg bg-gray-50 border border-gray-100"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.2 }}
+                  whileHover={{ 
+                    y: -8, 
+                    scale: 1.05,
+                    transition: { type: "spring", stiffness: 300 }
+                  }}
+                  className="relative overflow-hidden p-6 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-100 border border-blue-200 shadow-lg"
                 >
-                  <div className="flex items-center justify-center md:justify-start gap-1 sm:gap-2 mb-1 sm:mb-2">
-                    <BarChart2 size={16} className="text-blue-500" />
-                    <p className="text-xs sm:text-sm font-medium text-gray-600">Videos</p>
+                  <div className="absolute -right-4 -top-4 w-24 h-24 rounded-full bg-blue-500/10 blur-xl"></div>
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 bg-blue-500 rounded-lg shadow-md">
+                      <BarChart2 size={20} className="text-white" />
+                    </div>
+                    <p className="text-sm font-semibold text-blue-700">Videos</p>
                   </div>
-                  <p className="text-sm sm:text-xl font-bold text-gray-900 text-center md:text-left">{formatNumber(channelInfo.statistics.videoCount)}</p>
+                  <p className="text-3xl font-bold text-blue-900">{formatNumber(channelInfo.statistics.videoCount)}</p>
+                  <div className="absolute bottom-0 right-0 w-1/3 h-1 bg-blue-500 rounded-tl-lg"></div>
                 </motion.div>
                 
+                {/* Views Card */}
                 <motion.div 
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.3, delay: 0.3 }}
-                  whileHover={{ y: -2, boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)" }}
-                  className="p-2 sm:p-4 rounded-lg bg-gray-50 border border-gray-100"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.3 }}
+                  whileHover={{ 
+                    y: -8, 
+                    scale: 1.05,
+                    transition: { type: "spring", stiffness: 300 }
+                  }}
+                  className="relative overflow-hidden p-6 rounded-xl bg-gradient-to-br from-emerald-50 to-green-100 border border-green-200 shadow-lg"
                 >
-                  <div className="flex items-center justify-center md:justify-start gap-1 sm:gap-2 mb-1 sm:mb-2">
-                    <Eye size={16} className="text-green-500" />
-                    <p className="text-xs sm:text-sm font-medium text-gray-600">Total Views</p>
+                  <div className="absolute -right-4 -top-4 w-24 h-24 rounded-full bg-green-500/10 blur-xl"></div>
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 bg-green-500 rounded-lg shadow-md">
+                      <Eye size={20} className="text-white" />
+                    </div>
+                    <p className="text-sm font-semibold text-green-700">Total Views</p>
                   </div>
-                  <p className="text-sm sm:text-xl font-bold text-gray-900 text-center md:text-left">{formatNumber(channelInfo.statistics.viewCount)}</p>
+                  <p className="text-3xl font-bold text-green-900">{formatNumber(channelInfo.statistics.viewCount)}</p>
+                  <div className="absolute bottom-0 right-0 w-1/3 h-1 bg-green-500 rounded-tl-lg"></div>
                 </motion.div>
               </div>
             </div>
@@ -190,7 +218,7 @@ export default function ChannelOverview({ channelId }) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.4, delay: 0.2 }}
-          className="overflow-x-auto pb-2 sticky top-0 bg-white z-10 pt-2"
+          className="overflow-x-auto sticky top-0 z-10 pt-2 pl-4 bg-transparent"
         >
           <div className="flex gap-2 min-w-max">
             {['overview', 'content', 'audience', 'engagement', 'comparison'].map((tab, index) => (
@@ -243,7 +271,7 @@ export default function ChannelOverview({ channelId }) {
           whileTap={{ scale: 0.95 }}
           className="w-12 h-12 flex items-center justify-center rounded-full bg-red-600 border border-red-500 text-white text-xl font-medium transition-all hover:bg-red-700 shadow-md"
         >
-          {compareChannelName ? '-' : '+'}
+          {compareChannelName ? '?' : '+'}
         </motion.button>
       </motion.div>
       

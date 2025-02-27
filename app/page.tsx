@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from "framer-motion";
 import ChannelSearch from '../components/ChannelSearch';
 import ChannelOverview from '../components/ChannelOverview';
-import { Bell, Settings, HelpCircle, ChevronRight, Search, TrendingUp, BarChart2, Play, Users, Clock } from "lucide-react";
+import { Bell, Settings, HelpCircle, TrendingUp, BarChart2, Users } from "lucide-react";
 
 export default function Home() {
   const [selectedChannelId, setSelectedChannelId] = useState('');
@@ -131,32 +131,52 @@ export default function Home() {
                 <ChannelSearch onChannelSelect={handleChannelSelect} headingText='Search here to know more about 👇'/>
                 
                 <motion.div
-                  variants={staggerCards.container}
-                  initial="initial"
-                  animate="animate"
-                  className="mt-10 sm:mt-16"
-                >
-                  <h3 className="text-lg font-medium text-gray-800 mb-4 sm:mb-6 px-1">Why use YT Studio Analytics?</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
-                    {[
-                      { icon: <TrendingUp size={24} className="text-red-500" />, title: "Track Performance", description: "Monitor views, engagement, and subscriber growth over time" },
-                      { icon: <BarChart2 size={24} className="text-blue-500" />, title: "Analyze Audience", description: "Understand who watches your content and when they're most active" },
-                      { icon: <Users size={24} className="text-green-500" />, title: "Grow Community", description: "Build a loyal audience with data-driven content decisions" }
-                    ].map((card, index) => (
-                      <motion.div
-                        key={index}
-                        variants={staggerCards.item}
-                        whileHover={{ y: -5, boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)" }}
-                        className="bg-white rounded-xl p-5 sm:p-6 border border-gray-100 shadow-sm hover:border-gray-200 transition-all duration-300"
-                      >
-                        <div className="mb-3">{card.icon}</div>
-                        <h4 className="text-gray-700 font-medium mb-2">{card.title}</h4>
-                        <p className="text-gray-400 text-sm">{card.description}</p>
-                      </motion.div>
-                    ))}
-                  </div>
-                </motion.div>
+                variants={staggerCards.container}
+                initial="initial"
+                animate="animate"
+                className="mt-12 sm:mt-16"
+              >
+                <h3 className={`text-lg font-medium text-gray-800 mb-6 sm:mb-8 px-1`}>Why use YT Studio Analytics?</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
+                  {[
+                    { 
+                      icon: <TrendingUp size={24} className="text-red-500" />, 
+                      title: "Real-time Performance", 
+                      description: "Monitor views, engagement, and subscriber growth with up-to-the-minute data",
+                      color: "from-red-500 to-red-400"
+                    },
+                    { 
+                      icon: <BarChart2 size={24} className="text-blue-500" />, 
+                      title: "Audience Insights", 
+                      description: "Understand your viewers with deep demographic and behavioral analytics",
+                      color: "from-blue-500 to-blue-400" 
+                    },
+                    { 
+                      icon: <Users size={24} className="text-green-500" />, 
+                      title: "Community Building", 
+                      description: "Grow a loyal audience using AI-powered content strategy recommendations",
+                      color: "from-green-500 to-green-400"
+                    }
+                  ].map((card, index) => (
+                    <motion.div
+                      key={index}
+                      variants={staggerCards.item}
+                      whileHover={{ y: -8, scale: 1.02 }}
+                      className={`rounded-xl overflow-hidden bg-white border-gray-200 border shadow-sm transition-all duration-300`}
+                    >
+                      <div className={`h-2 bg-gradient-to-r ${card.color}`}></div>
+                      <div className="p-6">
+                        <div className="mb-4 w-12 h-12 rounded-full flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800">
+                          {card.icon}
+                        </div>
+                        <h4 className='font-semibold text-lg mb-2 text-black'>{card.title}</h4>
+                        <p className='text-gray-500 text-sm'>{card.description}</p>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
               </motion.div>
+            </motion.div>
             ) : (
               <motion.div
                 key="overview"
