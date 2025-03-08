@@ -1,37 +1,42 @@
 import React from 'react';
-import { TabType, ChannelData } from './types';
+import { motion, AnimatePresence } from 'framer-motion';
+import { TabType } from './types';
 
 interface TabContentProps {
   activeTab: TabType;
-  compareChannelData: ChannelData | null;
+  children: React.ReactNode;
 }
 
-export default function TabContent({ activeTab, compareChannelData }: TabContentProps) {
-  let content = '';
-  
-  switch (activeTab) {
-    case 'overview':
-      content = 'Channel performance overview charts will appear here';
-      break;
-    case 'content':
-      content = 'Content performance analytics will appear here';
-      break;
-    case 'audience':
-      content = 'Audience demographics will appear here';
-      break;
-    case 'engagement':
-      content = 'Engagement metrics will appear here';
-      break;
-    case 'comparison':
-      content = compareChannelData ? 'Comparison data will appear here' : 'Select a channel to compare first';
-      break;
-    default:
-      content = 'No content available';
-  }
+export default function TabContent({ activeTab, children }: TabContentProps) {
+  const variants = {
+    hidden: { opacity: 0, y: 10 },
+    visible: { 
+      opacity: 1, 
+      y: 0,
+      transition: {
+        duration: 0.3,
+        staggerChildren: 0.1
+      }
+    },
+    exit: { 
+      opacity: 0, 
+      y: -10,
+      transition: { duration: 0.2 }
+    }
+  };
   
   return (
-    <div className="h-48 sm:h-64 bg-gray-50 rounded-lg flex items-center justify-center text-gray-500 border border-gray-100 text-sm sm:text-base text-center px-4">
-      {content}
-    </div>
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={activeTab}
+        variants={variants}
+        initial="hidden"
+        animate="visible"
+        exit="exit"
+        className="p-1 sm:p-2"
+      >
+        {children}
+      </motion.div>
+    </AnimatePresence>
   );
 }

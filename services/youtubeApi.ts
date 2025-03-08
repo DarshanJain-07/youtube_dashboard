@@ -187,6 +187,21 @@ export async function fetchFromYouTube<T extends YouTubeApiResponse>(endpoint: s
 }
 
 /**
+ * Search for YouTube channels
+ * @param {string} query - Search query
+ * @param {number} maxResults - Maximum number of results (default: 10)
+ * @returns {Promise<Object>} Search results
+ */
+export async function searchChannels(query: string, maxResults: number = 10) {
+  return fetchFromYouTube('search', {
+    part: 'snippet',
+    q: query,
+    type: 'channel',
+    maxResults,
+  });
+}
+
+/**
  * Get channel activities (uploads)
  * @param {string} channelId - YouTube channel ID
  * @param {number} maxResults - Maximum number of results (default: 15)
