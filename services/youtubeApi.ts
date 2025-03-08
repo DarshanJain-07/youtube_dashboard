@@ -1,13 +1,149 @@
 // services/youtubeApi.ts
 
-/**
- * YouTube API Service
- * A collection of functions to interact with the YouTube Data API v3
- */
-
 // Base URL for YouTube API
 const API_BASE_URL = 'https://www.googleapis.com/youtube/v3';
 
+// API Key type
+type APIKey = string;
+
+// Base interface for all API responses
+interface YouTubeApiResponse {
+  kind: string;
+  etag: string;
+  pageInfo: {
+    totalResults: number;
+    resultsPerPage: number;
+  };
+  nextPageToken?: string;
+  prevPageToken?: string;
+  items: any[];
+}
+// ---------------------------------------------------------------------------------------------------------
+//  ACTIVITY
+interface Activity {
+  snippet: {
+    title: string;
+    thumbnails: {
+      high: {
+        url: string;
+      };
+    };
+  };
+  contentDetails: {
+    upload?: {
+      videoId: string;
+    };
+  };
+}
+
+interface ActivitiesResponse extends YouTubeApiResponse {
+  items: Activity[];
+}
+
+// ---------------------------------------------------------------------------------------------------------
+
+// CHANNELS 
+interface Channel {
+  snippet: {
+    publishedAt: string; // ISO 8601 format
+  };
+  statistics: {
+    viewCount: string; // Will be parsed as number
+    subscriberCount: string; // Will be parsed as number
+    hiddenSubscriberCount: boolean;
+    videoCount: string; // Will be parsed as number
+    commentCount: string; // Will be parsed as number
+  };
+  topicDetails?: {
+    topicIds?: string[];
+    topicCategories?: string[];
+  };
+  brandingSettings?: {
+    channel: {
+      keywords: string;
+    };
+  };
+}
+
+interface ChannelsResponse extends YouTubeApiResponse {
+  items: Channel[];
+}
+
+// ---------------------------------------------------------------------------------------------------------
+// CHANNEL SECTION
+interface ChannelSection {
+  contentDetails: {
+    channels: string[];
+  };
+}
+
+interface ChannelSectionsResponse extends YouTubeApiResponse {
+  items: ChannelSection[];
+}
+
+// ---------------------------------------------------------------------------------------------------------
+// SEARCH endpoint types
+interface SearchResult {
+  id: {
+    videoId?: string;
+  };
+}
+
+interface SearchResponse extends YouTubeApiResponse {
+  items: SearchResult[];
+}
+
+// ---------------------------------------------------------------------------------------------------------
+
+// VIDEOS endpoint types
+interface Video {
+  id: string;
+  snippet: {
+    publishedAt: string; // ISO 8601
+    description: string;
+    tags?: string[];
+    categoryId: string;
+  };
+  statistics: {
+    viewCount: string; // Will be parsed as number
+    likeCount: string; // Will be parsed as number
+    favoriteCount: string; // Will be parsed as number
+    commentCount: string; // Will be parsed as number
+  };
+  topicDetails?: {
+    topicCategories?: string[];
+  };
+  paidProductPlacementDetails?: {
+    hasPaidProductPlacement?: boolean;
+  };
+}
+
+interface VideosResponse extends YouTubeApiResponse {
+  items: Video[];
+}
+
+// ---------------------------------------------------------------------------------------------------------
+// COMMENTS endpoint types
+interface CommentThread {
+  id: string;
+  snippet: {
+    topLevelComment: {
+      snippet: {
+        authorDisplayName: string;
+        textDisplay: string;
+        likeCount: number;
+        publishedAt: string;
+      };
+    };
+    totalReplyCount: number;
+  };
+}
+
+interface CommentThreadsResponse extends YouTubeApiResponse {
+  items: CommentThread[];
+}
+
+// Type for API parameters
 interface YouTubeApiParams {
   [key: string]: string | number | undefined;
 }
@@ -16,9 +152,9 @@ interface YouTubeApiParams {
  * Generic function to fetch data from YouTube API
  * @param {string} endpoint - API endpoint (e.g., 'search', 'channels', 'videos')
  * @param {YouTubeApiParams} params - Query parameters for the API call
- * @returns {Promise<any>} API response data
+ * @returns {Promise<T>} API response data
  */
-export async function fetchFromYouTube(endpoint: string, params: YouTubeApiParams = {}) {
+export async function fetchFromYouTube<T extends YouTubeApiResponse>(endpoint: string, params: YouTubeApiParams = {}): Promise<T> {
   // Add API key to params
   const queryParams = {
     ...params,
@@ -43,7 +179,7 @@ export async function fetchFromYouTube(endpoint: string, params: YouTubeApiParam
       );
     }
     
-    return await response.json();
+    return await response.json() as T;
   } catch (error) {
     console.error('Error fetching from YouTube API:', error);
     throw error;
@@ -51,270 +187,236 @@ export async function fetchFromYouTube(endpoint: string, params: YouTubeApiParam
 }
 
 /**
- * Search for YouTube channels
- * @param {string} query - Search query
- * @param {number} maxResults - Maximum number of results (default: 10)
- * @returns {Promise<Object>} Search results
+ * Get channel activities (uploads)
+ * @param {string} channelId - YouTube channel ID
+ * @param {number} maxResults - Maximum number of results (default: 15)
+ * @returns {Promise<Object>} Channel activities
  */
-export async function searchChannels(query: string, maxResults: number = 10) {
-  return fetchFromYouTube('search', {
-    part: 'snippet',
-    q: query,
-    type: 'channel',
-    maxResults,
+export async function getActivities(channelId: string, maxResults: number = 15): Promise<{
+  title: string;
+  thumbnailUrl: string;
+  videoId: string;
+}[]> {
+  const response = await fetchFromYouTube<ActivitiesResponse>('activities', {
+    part: 'snippet,contentDetails',
+    channelId,
+    maxResults
   });
+  
+  return response.items
+    .map(item => ({
+      title: item.snippet.title,
+      thumbnailUrl: item.snippet.thumbnails.high.url,
+      videoId: item.contentDetails.upload?.videoId || ''
+    }));
 }
 
 /**
  * Get channel details by channel ID
  * @param {string} channelId - YouTube channel ID
- * @returns {Promise<Object>} Channel details
+ * @returns {Promise<ChannelsResponse>} Channel details
  */
-export async function getChannelDetails(channelId: string) {
-  return fetchFromYouTube('channels', {
-    part: 'snippet,statistics,contentDetails,brandingSettings',
+export async function getChannelDetails(channelId: string): Promise<ChannelsResponse> {
+  return fetchFromYouTube<ChannelsResponse>('channels', {
+    part: 'snippet,statistics,topicDetails,brandingSettings',
     id: channelId,
   });
 }
 
 /**
+ * Get formatted channel info with numeric values and formatted date
+ * @param {string} channelId - YouTube channel ID
+ * @returns {Promise<Object>} Formatted channel info
+ */
+export async function getChannelInfo(channelId: string): Promise<{
+  publishedAt: string; // Converted to human-readable format
+  viewCount: number;
+  commentCount: number;
+  subscriberCount: number;
+  hiddenSubscriberCount: boolean;
+  videoCount: number;
+  topicIds: string[];
+  topicCategories: string[];
+  keywords: string;
+}> {
+  const response = await getChannelDetails(channelId);
+  
+  if (response.items.length === 0) {
+    throw new Error('Channel not found');
+  }
+  
+  const channel = response.items[0];
+  
+  // Convert ISO date to human-readable format
+  const date = new Date(channel.snippet.publishedAt);
+  const formattedDate = date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+  
+  return {
+    publishedAt: formattedDate,
+    viewCount: parseInt(channel.statistics.viewCount, 10),
+    commentCount: parseInt(channel.statistics.commentCount, 10),
+    subscriberCount: parseInt(channel.statistics.subscriberCount, 10),
+    hiddenSubscriberCount: channel.statistics.hiddenSubscriberCount,
+    videoCount: parseInt(channel.statistics.videoCount, 10),
+    topicIds: channel.topicDetails?.topicIds || [],
+    topicCategories: channel.topicDetails?.topicCategories || [],
+    keywords: channel.brandingSettings?.channel.keywords || ''
+  };
+}
+
+/**
+ * Get channel sections by channel ID
+ * @param {string} channelId - YouTube channel ID
+ * @returns {Promise<ChannelSectionsResponse>} Channel sections
+ */
+export async function getChannelSections(channelId: string): Promise<ChannelSectionsResponse> {
+  return fetchFromYouTube<ChannelSectionsResponse>('channelSections', {
+    part: 'contentDetails',
+    channelId
+  });
+}
+
+/**
+ * Get featured channels from a YouTuber's channel
+ * @param {string} channelId - YouTube channel ID
+ * @returns {Promise<string[]>} List of featured channel IDs
+ */
+export async function getFeaturedChannels(channelId: string): Promise<{
+  channels: string[];
+}> {
+  const response = await getChannelSections(channelId);
+  
+  // Extract all channel IDs from channel sections
+  const featuredChannels: string[] = [];
+  response.items.forEach(item => {
+    if (item.contentDetails && item.contentDetails.channels) {
+      featuredChannels.push(...item.contentDetails.channels);
+    }
+  });
+  
+  return {
+    channels: featuredChannels
+  };
+}
+
+/**
  * Get videos from a specific channel
  * @param {string} channelId - YouTube channel ID
- * @param {number} maxResults - Maximum number of results (default: 50)
- * @param {string} pageToken - Token for pagination
- * @returns {Promise<Object>} List of channel videos
+ * @param {number} maxResults - Maximum number of results (default: 20)
+ * @returns {Promise<SearchResponse>} List of channel videos
  */
-export async function getChannelVideos(channelId: string, maxResults: number = 50, pageToken: string = '') {
-  return fetchFromYouTube('search', {
+export async function getChannelVideos(channelId: string, maxResults: number = 20): Promise<SearchResponse> {
+  return fetchFromYouTube<SearchResponse>('search', {
     part: 'snippet',
     channelId,
-    maxResults,
-    order: 'date',
-    type: 'video',
-    pageToken: pageToken || undefined,
+    maxResults
   });
 }
 
 /**
  * Get detailed video information
  * @param {string|string[]} videoIds - Single video ID or array of video IDs
- * @returns {Promise<Object>} Video details
+ * @returns {Promise<VideosResponse>} Video details
  */
-export async function getVideoDetails(videoIds: string | string[]) {
+export async function getVideoDetails(videoIds: string | string[]): Promise<VideosResponse> {
   const ids = Array.isArray(videoIds) ? videoIds.join(',') : videoIds;
   
-  return fetchFromYouTube('videos', {
-    part: 'snippet,statistics,contentDetails',
+  return fetchFromYouTube<VideosResponse>('videos', {
+    part: 'snippet,statistics,topicDetails,paidProductPlacementDetails',
     id: ids,
   });
+}
+
+/**
+ * Get formatted video data
+ * @param {string|string[]} videoIds - Single video ID or array of video IDs
+ * @returns {Promise<Array>} Formatted video data
+ */
+export async function getFormattedVideoData(videoIds: string | string[]): Promise<{
+  id: string;
+  publishedAt: string;
+  description: string;
+  tags: string[];
+  categoryId: string;
+  viewCount: number;
+  likeCount: number;
+  favoriteCount: number;
+  commentCount: number;
+  topicCategories: string[];
+  hasPaidProductPlacement: boolean;
+}[]> {
+  const response = await getVideoDetails(videoIds);
+  
+  return response.items.map(item => ({
+    id: item.id,
+    publishedAt: item.snippet.publishedAt,
+    description: item.snippet.description,
+    tags: item.snippet.tags || [],
+    categoryId: item.snippet.categoryId,
+    viewCount: parseInt(item.statistics.viewCount, 10),
+    likeCount: parseInt(item.statistics.likeCount, 10),
+    favoriteCount: parseInt(item.statistics.favoriteCount, 10),
+    commentCount: parseInt(item.statistics.commentCount, 10),
+    topicCategories: item.topicDetails?.topicCategories || [],
+    hasPaidProductPlacement: item.paidProductPlacementDetails?.hasPaidProductPlacement || false
+  }));
 }
 
 /**
  * Get video comments
  * @param {string} videoId - YouTube video ID
  * @param {number} maxResults - Maximum number of comments (default: 100)
- * @param {string} pageToken - Token for pagination
- * @returns {Promise<Object>} Video comments
+ * @param {string} order - Sort order ('time' or 'relevance')
+ * @returns {Promise<CommentThreadsResponse>} Video comments
  */
-export async function getVideoComments(videoId: string, maxResults: number = 100, pageToken: string = '') {
-  return fetchFromYouTube('commentThreads', {
-    part: 'snippet,replies',
+export async function getVideoComments(
+  videoId: string, 
+  maxResults: number = 100,
+  order: 'time' | 'relevance' = 'relevance'
+): Promise<CommentThreadsResponse> {
+  return fetchFromYouTube<CommentThreadsResponse>('commentThreads', {
+    part: 'snippet',
     videoId,
     maxResults,
-    order: 'relevance',
-    pageToken: pageToken || undefined,
+    order
   });
 }
 
 /**
- * Get channel uploads playlist ID (All uploaded videos)
- * @param {string} channelId - YouTube channel ID
- * @returns {Promise<string>} Uploads playlist ID
+ * Get formatted video comments
+ * @param {string} videoId - YouTube video ID
+ * @param {number} maxResults - Maximum number of comments (default: 100)
+ * @param {string} order - Sort order ('time' or 'relevance')
+ * @returns {Promise<Object>} Formatted video comments
  */
-export async function getUploadsPlaylistId(channelId: string): Promise<string> {
-  const response = await getChannelDetails(channelId);
-  return response.items[0]?.contentDetails?.relatedPlaylists?.uploads || '';
-}
-
-/**
- * Get all videos from a playlist (useful for channel uploads)
- * @param {string} playlistId - YouTube playlist ID
- * @param {number} maxResults - Maximum results per page (default: 50)
- * @param {string} pageToken - Token for pagination
- * @returns {Promise<Object>} Playlist items
- */
-export async function getPlaylistItems(playlistId: string, maxResults: number = 50, pageToken: string = '') {
-  return fetchFromYouTube('playlistItems', {
-    part: 'snippet,contentDetails',
-    playlistId,
-    maxResults,
-    pageToken: pageToken || undefined,
-  });
-}
-
-/**
- * Get all videos from a channel with pagination handling
- * @param {string} channelId - YouTube channel ID
- * @param {number} limit - Maximum total videos to fetch (default: 200)
- * @returns {Promise<Array>} Array of video items
- */
-export async function getAllChannelVideos(channelId: string, limit: number = 200) {
-  const uploadsPlaylistId = await getUploadsPlaylistId(channelId);
-  if (!uploadsPlaylistId) {
-    throw new Error('Could not retrieve channel uploads playlist');
-  }
+export async function getFormattedVideoComments(
+  videoId: string, 
+  maxResults: number = 100, 
+  order: 'time' | 'relevance' = 'relevance'
+): Promise<{
+  comments: {
+    id: string;
+    authorName: string;
+    text: string;
+    likeCount: number;
+    publishedAt: string;
+    replyCount: number;
+  }[];
+}> {
+  const response = await getVideoComments(videoId, maxResults, order);
   
-  let videos: any[] = [];
-  let nextPageToken = '';
-  
-  do {
-    const response = await getPlaylistItems(uploadsPlaylistId, 50, nextPageToken);
-    videos = [...videos, ...response.items];
-    nextPageToken = response.nextPageToken || '';
-    
-    if (videos.length >= limit || !nextPageToken) {
-      break;
-    }
-  } while (nextPageToken);
-  
-  return videos.slice(0, limit);
-}
-
-/**
- * Get channel analytics data (combines multiple API calls)
- * @param {string} channelId - YouTube channel ID
- * @returns {Promise<any>} Comprehensive channel data
- */
-export async function getChannelAnalytics(channelId: string) {
-  try {
-    // Get basic channel info
-    const channelData = await getChannelDetails(channelId);
-    const channel = channelData.items[0];
-    
-    if (!channel) {
-      throw new Error('Channel not found');
-    }
-    
-    // Get videos (limited to 50 most recent)
-    const videos = await getAllChannelVideos(channelId, 50);
-    
-    // Extract video IDs for detailed info
-    const videoIds = videos.map(video => video.contentDetails.videoId);
-    
-    // Get detailed video data
-    const videoDetailsResponse = await getVideoDetails(videoIds);
-    const videoDetails = videoDetailsResponse.items;
-    
-    // Calculate additional metrics
-    const totalViews = videoDetails.reduce((sum: number, video: any) => 
-      sum + parseInt(video.statistics.viewCount || '0'), 0);
-    
-    const averageViews = videoDetails.length > 0 ? totalViews / videoDetails.length : 0;
-    
-    const videoLengths = videoDetails.map((video: any) => {
-      const duration = video.contentDetails.duration;
-      // Convert ISO 8601 duration to seconds
-      return parseDuration(duration);
-    });
-    
-    const averageLength = videoLengths.length > 0 ? 
-      videoLengths.reduce((sum: number, length: number) => sum + length, 0) / videoLengths.length : 0;
-    
-    // Return compiled analytics data
-    return {
-      channelInfo: channel,
-      statistics: {
-        totalVideos: channel.statistics.videoCount,
-        totalViews: channel.statistics.viewCount,
-        subscribers: channel.statistics.subscriberCount,
-        averageViews,
-        averageVideoLength: averageLength,
-      },
-      recentVideos: videoDetails,
-    };
-  } catch (error) {
-    console.error('Error getting channel analytics:', error);
-    throw error;
-  }
-}
-
-/**
- * Helper function to parse ISO 8601 duration to seconds
- * @param {string} duration - ISO 8601 duration string (e.g., PT1H30M15S)
- * @returns {number} Duration in seconds
- */
-function parseDuration(duration: string): number {
-  const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
-  
-  if (!match) return 0;
-  
-  const hours = parseInt(match[1] || '0');
-  const minutes = parseInt(match[2] || '0');
-  const seconds = parseInt(match[3] || '0');
-  
-  return hours * 3600 + minutes * 60 + seconds;
-}
-
-/**
- * Compare multiple channels
- * @param {string[]} channelIds - Array of channel IDs to compare
- * @returns {Promise<Object>} Comparison data for all channels
- */
-export async function compareChannels(channelIds: string[]) {
-  try {
-    const channelPromises = channelIds.map(id => getChannelAnalytics(id));
-    const channelsData = await Promise.all(channelPromises);
-    
-    return {
-      channels: channelsData,
-      comparativeMetrics: generateComparativeMetrics(channelsData),
-    };
-  } catch (error) {
-    console.error('Error comparing channels:', error);
-    throw error;
-  }
-}
-
-/**
- * Generate comparative metrics between channels
- * @param {Array} channelsData - Array of channel analytics data
- * @returns {Object} Comparative metrics
- */
-function generateComparativeMetrics(channelsData: any[]) {
-  // Calculate growth rates, engagement ratios, etc.
   return {
-    subscriberRanking: channelsData
-      .map(data => ({
-        id: data.channelInfo.id,
-        name: data.channelInfo.snippet.title,
-        subscribers: parseInt(data.channelInfo.statistics.subscriberCount)
-      }))
-      .sort((a, b) => b.subscribers - a.subscribers),
-    
-    viewsRanking: channelsData
-      .map(data => ({
-        id: data.channelInfo.id,
-        name: data.channelInfo.snippet.title,
-        views: parseInt(data.channelInfo.statistics.viewCount)
-      }))
-      .sort((a, b) => b.views - a.views),
-    
-    engagementRanking: channelsData
-      .map(data => {
-        const subscribers = parseInt(data.channelInfo.statistics.subscriberCount);
-        const views = parseInt(data.channelInfo.statistics.viewCount);
-        const videos = parseInt(data.channelInfo.statistics.videoCount);
-        
-        // Views per subscriber ratio
-        const viewsPerSubscriber = subscribers > 0 ? views / subscribers : 0;
-        
-        return {
-          id: data.channelInfo.id,
-          name: data.channelInfo.snippet.title,
-          viewsPerSubscriber,
-          viewsPerVideo: videos > 0 ? views / videos : 0,
-        };
-      })
-      .sort((a, b) => b.viewsPerSubscriber - a.viewsPerSubscriber),
+    comments: response.items.map(item => ({
+      id: item.id,
+      authorName: item.snippet.topLevelComment.snippet.authorDisplayName,
+      text: item.snippet.topLevelComment.snippet.textDisplay,
+      likeCount: item.snippet.topLevelComment.snippet.likeCount,
+      publishedAt: item.snippet.topLevelComment.snippet.publishedAt,
+      replyCount: item.snippet.totalReplyCount
+    }))
   };
 }
