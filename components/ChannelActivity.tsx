@@ -154,6 +154,12 @@ const ChannelActivity: React.FC<LatestVideosProps> = ({ channelId }) => {
   const handleViewComments = async () => {
     if (!selectedVideo) return;
     
+    // If comments are already shown, hide them and return
+    if (showComments) {
+      setShowComments(false);
+      return;
+    }
+    
     setLoadingComments(true);
     setShowComments(true);
     
@@ -268,21 +274,13 @@ const ChannelActivity: React.FC<LatestVideosProps> = ({ channelId }) => {
             onClick={closeVideoDialog}
           >
             <motion.div 
-              className="bg-white rounded-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto overflow-x-hidden relative shadow-2xl border border-gray-100"
+              className="bg-white rounded-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto overflow-x-hidden relative shadow-2xl border border-gray-100 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
               transition={{ type: "spring", damping: 25 }}
               onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside
-              style={{ scrollbarWidth: 'none' }}
             >
-              {/* Hide scrollbar for Chrome, Safari and Opera */}
-              <style jsx>{`
-                .hide-scrollbar::-webkit-scrollbar {
-                  display: none;
-                }
-              `}</style>
-              
               {/* Gradient accent - similar to page.tsx styling */}
               <div className="absolute inset-0 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl opacity-40 blur-md transform -translate-y-1 translate-x-1"></div>
 
@@ -377,7 +375,7 @@ const ChannelActivity: React.FC<LatestVideosProps> = ({ channelId }) => {
                     }`}
                   >
                     <MessageCircle size={18} />
-                    <span>View Comments</span>
+                    <span>{showComments ? "Hide Comments" : "View Comments"}</span>
                     <span className="bg-white/20 px-2 py-0.5 rounded-full text-xs">
                       {formatNumber(selectedVideo.commentCount)}
                     </span>
@@ -386,15 +384,22 @@ const ChannelActivity: React.FC<LatestVideosProps> = ({ channelId }) => {
                 
                 {/* Comments Section */}
                 {showComments && (
-                  <div className="mb-6">
+                  <div className="mb-6 bg-white rounded-xl p-5 shadow-sm">
                     <div className="flex items-center justify-between mb-4">
-                      <h4 className="text-lg font-semibold text-gray-800">Comments</h4>
+                      <h4 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                        <span className="w-7 h-7 rounded-full bg-blue-50 flex items-center justify-center text-blue-500">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                          </svg>
+                        </span>
+                        Comments
+                      </h4>
                       <div className="flex gap-2">
                         <button 
                           onClick={() => handleSortOrderChange('relevance')}
-                          className={`px-3 py-1 text-sm rounded-full ${
+                          className={`px-3 py-1 text-sm rounded-full transition-all duration-200 ${
                             commentSortOrder === 'relevance' 
-                              ? 'bg-blue-600 text-white' 
+                              ? 'bg-blue-600 text-white shadow-md' 
                               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                           }`}
                         >
@@ -402,9 +407,9 @@ const ChannelActivity: React.FC<LatestVideosProps> = ({ channelId }) => {
                         </button>
                         <button 
                           onClick={() => handleSortOrderChange('time')}
-                          className={`px-3 py-1 text-sm rounded-full ${
+                          className={`px-3 py-1 text-sm rounded-full transition-all duration-200 ${
                             commentSortOrder === 'time' 
-                              ? 'bg-blue-600 text-white' 
+                              ? 'bg-blue-600 text-white shadow-md' 
                               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                           }`}
                         >
@@ -422,25 +427,54 @@ const ChannelActivity: React.FC<LatestVideosProps> = ({ channelId }) => {
                         </div>
                       </div>
                     ) : comments.length > 0 ? (
-                      <div className="space-y-4 max-h-[400px] overflow-y-auto px-2">
+                      <div className="space-y-4 max-h-[400px] overflow-y-auto px-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-400">
                         {comments.map(comment => (
-                          <div key={comment.id} className="bg-gray-50 p-4 rounded-lg">
+                          <div key={comment.id} className="bg-gray-50 p-4 rounded-lg border border-gray-100 shadow-md hover:shadow-lg transition-shadow duration-300 transform hover:-translate-y-1">
                             <div className="flex justify-between mb-2">
-                              <span className="font-medium text-blue-700">{comment.authorName}</span>
-                              <span className="text-xs text-gray-500">{formatDate(comment.publishedAt)}</span>
+                              <span className="font-medium text-blue-700 flex items-center gap-1">
+                                <span className="w-5 h-5 rounded-full bg-blue-50 flex items-center justify-center text-blue-500">
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="12" cy="7" r="4"></circle>
+                                  </svg>
+                                </span>
+                                {comment.authorName}
+                              </span>
+                              <span className="text-xs text-gray-500 flex items-center gap-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <circle cx="12" cy="12" r="10"></circle>
+                                  <polyline points="12 6 12 12 16 14"></polyline>
+                                </svg>
+                                {formatDate(comment.publishedAt)}
+                              </span>
                             </div>
-                            <p className="text-gray-700" dangerouslySetInnerHTML={{ __html: comment.text }}></p>
+                            <p className="text-gray-700 text-sm" dangerouslySetInnerHTML={{ __html: comment.text }}></p>
                             <div className="flex justify-between mt-2 text-xs text-gray-500">
-                              <span>{comment.likeCount} likes</span>
+                              <span className="flex items-center gap-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"></path>
+                                  <path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path>
+                                </svg>
+                                {comment.likeCount} likes
+                              </span>
                               {comment.replyCount > 0 && (
-                                <span>{comment.replyCount} replies</span>
+                                <span className="flex items-center gap-1">
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="15 10 20 15 15 20"></polyline>
+                                    <path d="M4 4v7a4 4 0 0 0 4 4h12"></path>
+                                  </svg>
+                                  {comment.replyCount} replies
+                                </span>
                               )}
                             </div>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <div className="text-center py-10 text-gray-500">
+                      <div className="text-center py-10 text-gray-500 bg-gray-50 rounded-lg border border-gray-100">
+                        <svg className="mx-auto h-12 w-12 text-gray-400 mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                        </svg>
                         No comments found for this video.
                       </div>
                     )}

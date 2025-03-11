@@ -119,7 +119,7 @@ export default function YoutubePage() {
           <div className="p-6 sm:p-8 md:p-10">
             {/* Hero section */}
             <motion.div 
-              className="text-center mb-8 sm:mb-10"
+              className="text-center mb-2 sm:mb-4"
               variants={animations.slideUp}
               initial="hidden"
               animate="visible"
@@ -147,7 +147,7 @@ export default function YoutubePage() {
                   initial="hidden"
                   animate="visible"
                   exit={{ opacity: 0, y: -20 }}
-                  className="mt-14 sm:mt-16"
+                  className="mt-10 sm:mt-10"
                 >
                   <div className="flex items-center gap-2 mb-6">
                     <div className="w-1.5 h-8 bg-gradient-to-b from-blue-500 to-purple-500 rounded-full"></div>
