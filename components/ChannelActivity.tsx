@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getActivities, getFormattedVideoData } from '../services/youtubeApi';
 import { formatNumber } from './utils';
+import { X } from 'lucide-react';
 
 interface VideoData {
   id: string;
@@ -25,7 +26,7 @@ interface LatestVideosProps {
   channelId: string;
 }
 
-const LatestVideos: React.FC<LatestVideosProps> = ({ channelId }) => {
+const ChannelActivity: React.FC<LatestVideosProps> = ({ channelId }) => {
   const [videos, setVideos] = useState<VideoData[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -102,17 +103,6 @@ const LatestVideos: React.FC<LatestVideosProps> = ({ channelId }) => {
     document.body.style.overflow = 'auto';
   };
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center min-h-[300px]">
-        <motion.div 
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          className="rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"
-        />
-      </div>
-    );
-  }
 
   if (error) {
     return (
@@ -124,7 +114,6 @@ const LatestVideos: React.FC<LatestVideosProps> = ({ channelId }) => {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h2 className="text-2xl font-bold mb-6">Latest Videos</h2>
       
       {/* Thumbnail Grid */}
       <motion.div 
@@ -174,37 +163,46 @@ const LatestVideos: React.FC<LatestVideosProps> = ({ channelId }) => {
       <AnimatePresence>
         {selectedVideo && (
           <motion.div 
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-75"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-75 overflow-hidden backdrop-blur-sm"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={closeVideoDialog}
           >
             <motion.div 
-              className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+              className="bg-white rounded-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto overflow-x-hidden relative shadow-2xl border border-gray-100"
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
               transition={{ type: "spring", damping: 25 }}
               onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside
+              style={{ scrollbarWidth: 'none' }}
             >
+              {/* Hide scrollbar for Chrome, Safari and Opera */}
+              <style jsx>{`
+                .hide-scrollbar::-webkit-scrollbar {
+                  display: none;
+                }
+              `}</style>
+              
+              {/* Gradient accent */}
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl opacity-40 blur-md transform -translate-y-1 translate-x-1"></div>
+
               {/* Video Header with Close Button */}
-              <div className="flex justify-between items-start p-4 border-b">
-                <h3 className="text-xl font-bold text-gray-900">{selectedVideo.title}</h3>
+              <div className="relative flex justify-between items-center p-4 border-b border-gray-100">
+                <h3 className="text-lg font-bold text-gray-800 line-clamp-1 pr-2">{selectedVideo.title}</h3>
                 <button 
                   onClick={closeVideoDialog}
-                  className="text-gray-500 hover:text-gray-700 focus:outline-none"
+                  className="p-1 rounded-full hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-50 flex-shrink-0"
                 >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                  <X size={18} />
                 </button>
               </div>
 
               {/* Video Content */}
-              <div className="p-6">
+              <div className="relative p-4 pb-5">
                 {/* Thumbnail */}
-                <div className="mb-6 rounded-xl overflow-hidden">
+                <div className="mb-6 rounded-xl overflow-hidden shadow-lg transition-all hover:shadow-xl">
                   <img 
                     src={selectedVideo.thumbnailUrl} 
                     alt={selectedVideo.title} 
@@ -214,7 +212,7 @@ const LatestVideos: React.FC<LatestVideosProps> = ({ channelId }) => {
 
                 {/* Video Stats */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                  <div>
+                  <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-md hover:shadow-lg transition-all duration-300">
                     <h4 className="text-lg font-semibold mb-2 text-gray-800">Video Statistics</h4>
                     <ul className="space-y-2 text-gray-700">
                       <li><span className="font-medium">Published:</span> {formatDate(selectedVideo.publishedAt)}</li>
@@ -227,12 +225,14 @@ const LatestVideos: React.FC<LatestVideosProps> = ({ channelId }) => {
                     </ul>
                   </div>
 
-                  <div>
+                  <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-md hover:shadow-lg transition-all duration-300">
                     <h4 className="text-lg font-semibold mb-2 text-gray-800">Topic Categories</h4>
                     {selectedVideo.topicCategories.length > 0 ? (
-                      <ul className="space-y-1 text-gray-700">
+                      <ul className="space-y-1 text-gray-700 break-words">
                         {selectedVideo.topicCategories.map((topic, index) => (
-                          <li key={index}>{topic}</li>
+                          <li key={index} className="break-words text-sm">
+                            {topic}
+                          </li>
                         ))}
                       </ul>
                     ) : (
@@ -243,8 +243,8 @@ const LatestVideos: React.FC<LatestVideosProps> = ({ channelId }) => {
 
                 {/* Video Description */}
                 <div className="mb-6">
-                  <h4 className="text-lg font-semibold mb-2 text-gray-800">Description</h4>
-                  <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-md hover:shadow-lg transition-all duration-300">
+                    <h4 className="text-lg font-semibold mb-2 text-gray-800">Description</h4>
                     <p className="text-gray-700 whitespace-pre-line">{selectedVideo.description}</p>
                   </div>
                 </div>
@@ -257,7 +257,7 @@ const LatestVideos: React.FC<LatestVideosProps> = ({ channelId }) => {
                       {selectedVideo.tags.map((tag, index) => (
                         <span 
                           key={index} 
-                          className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded"
+                          className="bg-blue-100 text-blue-800 text-xs px-3 py-1 rounded-full shadow-sm hover:shadow transition-all duration-200"
                         >
                           {tag}
                         </span>
@@ -276,4 +276,4 @@ const LatestVideos: React.FC<LatestVideosProps> = ({ channelId }) => {
   );
 };
 
-export default LatestVideos;
+export default ChannelActivity;

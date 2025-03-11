@@ -1,13 +1,10 @@
-// services/youtubeApi.ts
+// YouTubeAPI.ts
 
 // Base URL for YouTube API
 const API_BASE_URL = 'https://www.googleapis.com/youtube/v3';
 
-// API Key type
-type APIKey = string;
-
-// Base interface for all API responses
-interface YouTubeApiResponse {
+// API Base response type
+export interface YouTubeApiResponse {
   kind: string;
   etag: string;
   pageInfo: {
@@ -18,133 +15,304 @@ interface YouTubeApiResponse {
   prevPageToken?: string;
   items: any[];
 }
-// ---------------------------------------------------------------------------------------------------------
-//  ACTIVITY
-interface Activity {
-  snippet: {
-    title: string;
-    thumbnails: {
-      high: {
-        url: string;
-      };
+
+// ACTIVITIES endpoint
+export interface ActivitySnippet {
+  title: string;
+  description?: string;
+  publishedAt: string;
+  channelId: string;
+  channelTitle: string;
+  thumbnails: {
+    high: {
+      url: string;
     };
   };
-  contentDetails: {
-    upload?: {
-      videoId: string;
-    };
+  type: 'upload';
+}
+
+export interface ActivityContentDetails {
+  upload?: {
+    videoId: string;
   };
 }
 
-interface ActivitiesResponse extends YouTubeApiResponse {
+export interface Activity {
+  kind: string;
+  etag: string;
+  id: string;
+  snippet: ActivitySnippet;
+  contentDetails: ActivityContentDetails;
+}
+
+export interface ActivitiesResponse extends YouTubeApiResponse {
   items: Activity[];
 }
 
-// ---------------------------------------------------------------------------------------------------------
+export interface FormattedActivity {
+  title: string;
+  thumbnailUrl: string;
+  videoId: string;
+}
 
-// CHANNELS 
-interface Channel {
-  snippet: {
-    publishedAt: string; // ISO 8601 format
-  };
-  statistics: {
-    viewCount: string; // Will be parsed as number
-    subscriberCount: string; // Will be parsed as number
-    hiddenSubscriberCount: boolean;
-    videoCount: string; // Will be parsed as number
-    commentCount: string; // Will be parsed as number
-  };
-  topicDetails?: {
-    topicIds?: string[];
-    topicCategories?: string[];
-  };
-  brandingSettings?: {
-    channel: {
-      keywords: string;
+// CHANNELS endpoint
+export interface ChannelSnippet {
+  publishedAt: string; // ISO 8601 date
+  title: string;
+  description: string;
+  customUrl?: string;
+  thumbnails: {
+    [size: string]: {
+      url: string;
+      width: number;
+      height: number;
     };
+  };
+  defaultLanguage?: string;
+  localized?: {
+    title: string;
+    description: string;
+  };
+  country?: string;
+}
+
+export interface ChannelStatistics {
+  viewCount: string; // Will be parsed as number
+  subscriberCount: string; // Will be parsed as number
+  hiddenSubscriberCount: boolean;
+  videoCount: string; // Will be parsed as number
+  commentCount: string; // Will be parsed as number
+}
+
+export interface ChannelTopicDetails {
+  topicIds?: string[];
+  topicCategories?: string[];
+}
+
+export interface ChannelBrandingSettings {
+  channel: {
+    keywords: string;
+    title?: string;
+    description?: string;
+    showRelatedChannels?: boolean;
+    unsubscribedTrailer?: string;
+    // Other channel fields still included
+  };
+  image?: {
+    bannerExternalUrl?: string;
   };
 }
 
-interface ChannelsResponse extends YouTubeApiResponse {
+export interface Channel {
+  kind: string;
+  etag: string;
+  id: string;
+  snippet: ChannelSnippet;
+  statistics: ChannelStatistics;
+  topicDetails?: ChannelTopicDetails;
+  brandingSettings?: ChannelBrandingSettings;
+}
+
+export interface ChannelsResponse extends YouTubeApiResponse {
   items: Channel[];
 }
 
-// ---------------------------------------------------------------------------------------------------------
-// CHANNEL SECTION
-interface ChannelSection {
-  contentDetails: {
-    channels: string[];
-  };
+export interface FormattedChannelInfo {
+  publishedAt: string; // Converted to human-readable format
+  viewCount: number;
+  commentCount: number;
+  subscriberCount: number;
+  hiddenSubscriberCount: boolean;
+  videoCount: number;
+  topicIds: string[];
+  topicCategories: string[];
+  keywords: string;
 }
 
-interface ChannelSectionsResponse extends YouTubeApiResponse {
+// CHANNEL SECTIONS endpoint
+export interface ChannelSectionContentDetails {
+  channels?: string[];
+  playlists?: string[];
+}
+
+export interface ChannelSection {
+  kind: string;
+  etag: string;
+  id: string;
+  contentDetails: ChannelSectionContentDetails;
+}
+
+export interface ChannelSectionsResponse extends YouTubeApiResponse {
   items: ChannelSection[];
 }
 
-// ---------------------------------------------------------------------------------------------------------
-// SEARCH endpoint types
-interface SearchResult {
+export interface FeaturedChannels {
+  channels: string[];
+}
+
+// SEARCH endpoint
+export interface SearchResult {
+  kind: string;
+  etag: string;
   id: {
+    kind: string;
     videoId?: string;
+    channelId?: string;
+    playlistId?: string;
+  };
+  snippet?: {
+    publishedAt: string;
+    channelId: string;
+    title: string;
+    description: string;
+    thumbnails: {
+      [size: string]: {
+        url: string;
+        width: number;
+        height: number;
+      };
+    };
+    channelTitle: string;
+    liveBroadcastContent: string;
   };
 }
 
-interface SearchResponse extends YouTubeApiResponse {
+export interface SearchResponse extends YouTubeApiResponse {
   items: SearchResult[];
 }
 
-// ---------------------------------------------------------------------------------------------------------
-
-// VIDEOS endpoint types
-interface Video {
-  id: string;
-  snippet: {
-    publishedAt: string; // ISO 8601
+// VIDEOS endpoint
+export interface VideoSnippet {
+  publishedAt: string; // ISO 8601
+  channelId: string;
+  title: string;
+  description: string;
+  thumbnails: {
+    [size: string]: {
+      url: string;
+      width: number;
+      height: number;
+    };
+  };
+  channelTitle: string;
+  tags?: string[];
+  categoryId: string;
+  liveBroadcastContent: string;
+  defaultLanguage?: string;
+  localized?: {
+    title: string;
     description: string;
-    tags?: string[];
-    categoryId: string;
   };
-  statistics: {
-    viewCount: string; // Will be parsed as number
-    likeCount: string; // Will be parsed as number
-    favoriteCount: string; // Will be parsed as number
-    commentCount: string; // Will be parsed as number
-  };
-  topicDetails?: {
-    topicCategories?: string[];
-  };
-  paidProductPlacementDetails?: {
-    hasPaidProductPlacement?: boolean;
-  };
+  defaultAudioLanguage?: string;
 }
 
-interface VideosResponse extends YouTubeApiResponse {
+export interface VideoStatistics {
+  viewCount: string; // Will be parsed as number
+  likeCount: string; // Will be parsed as number
+  dislikeCount?: string; // Will be parsed as number (not available anymore)
+  favoriteCount: string; // Will be parsed as number
+  commentCount: string; // Will be parsed as number
+}
+
+export interface VideoTopicDetails {
+  topicCategories?: string[];
+}
+
+export interface VideoPaidProductPlacementDetails {
+  hasPaidProductPlacement?: boolean;
+}
+
+export interface Video {
+  kind: string;
+  etag: string;
+  id: string;
+  snippet: VideoSnippet;
+  statistics: VideoStatistics;
+  topicDetails?: VideoTopicDetails;
+  paidProductPlacementDetails?: VideoPaidProductPlacementDetails;
+}
+
+export interface VideosResponse extends YouTubeApiResponse {
   items: Video[];
 }
 
-// ---------------------------------------------------------------------------------------------------------
-// COMMENTS endpoint types
-interface CommentThread {
+export interface FormattedVideoData {
   id: string;
-  snippet: {
-    topLevelComment: {
-      snippet: {
-        authorDisplayName: string;
-        textDisplay: string;
-        likeCount: number;
-        publishedAt: string;
-      };
-    };
-    totalReplyCount: number;
+  publishedAt: string;
+  description: string;
+  tags: string[];
+  categoryId: string;
+  viewCount: number;
+  likeCount: number;
+  favoriteCount: number;
+  commentCount: number;
+  topicCategories: string[];
+  hasPaidProductPlacement: boolean;
+}
+
+// COMMENTS endpoint
+export interface CommentSnippet {
+  authorDisplayName: string;
+  authorProfileImageUrl?: string;
+  authorChannelUrl?: string;
+  authorChannelId?: {
+    value: string;
+  };
+  textDisplay: string;
+  textOriginal?: string;
+  parentId?: string;
+  canRate?: boolean;
+  viewerRating?: string;
+  likeCount: number;
+  publishedAt: string;
+  updatedAt?: string;
+}
+
+export interface Comment {
+  kind: string;
+  etag: string;
+  id: string;
+  snippet: CommentSnippet;
+}
+
+export interface CommentThreadSnippet {
+  channelId?: string;
+  videoId?: string;
+  topLevelComment: Comment;
+  canReply?: boolean;
+  totalReplyCount: number;
+  isPublic?: boolean;
+}
+
+export interface CommentThread {
+  kind: string;
+  etag: string;
+  id: string;
+  snippet: CommentThreadSnippet;
+  replies?: {
+    comments: Comment[];
   };
 }
 
-interface CommentThreadsResponse extends YouTubeApiResponse {
+export interface CommentThreadsResponse extends YouTubeApiResponse {
   items: CommentThread[];
 }
 
+export interface FormattedComment {
+  id: string;
+  authorName: string;
+  text: string;
+  likeCount: number;
+  publishedAt: string;
+  replyCount: number;
+}
+
+export interface FormattedVideoComments {
+  comments: FormattedComment[];
+}
+
 // Type for API parameters
-interface YouTubeApiParams {
+export interface YouTubeApiParams {
   [key: string]: string | number | undefined;
 }
 
@@ -190,10 +358,10 @@ export async function fetchFromYouTube<T extends YouTubeApiResponse>(endpoint: s
  * Search for YouTube channels
  * @param {string} query - Search query
  * @param {number} maxResults - Maximum number of results (default: 10)
- * @returns {Promise<Object>} Search results
+ * @returns {Promise<SearchResponse>} Search results
  */
-export async function searchChannels(query: string, maxResults: number = 10) {
-  return fetchFromYouTube('search', {
+export async function searchChannels(query: string, maxResults: number = 10): Promise<SearchResponse> {
+  return fetchFromYouTube<SearchResponse>('search', {
     part: 'snippet',
     q: query,
     type: 'channel',
@@ -205,13 +373,9 @@ export async function searchChannels(query: string, maxResults: number = 10) {
  * Get channel activities (uploads)
  * @param {string} channelId - YouTube channel ID
  * @param {number} maxResults - Maximum number of results (default: 15)
- * @returns {Promise<Object>} Channel activities
+ * @returns {Promise<FormattedActivity[]>} Channel activities
  */
-export async function getActivities(channelId: string, maxResults: number = 15): Promise<{
-  title: string;
-  thumbnailUrl: string;
-  videoId: string;
-}[]> {
+export async function getActivities(channelId: string, maxResults: number = 15): Promise<FormattedActivity[]> {
   const response = await fetchFromYouTube<ActivitiesResponse>('activities', {
     part: 'snippet,contentDetails',
     channelId,
@@ -219,6 +383,7 @@ export async function getActivities(channelId: string, maxResults: number = 15):
   });
   
   return response.items
+    .filter(item => item.contentDetails.upload?.videoId)
     .map(item => ({
       title: item.snippet.title,
       thumbnailUrl: item.snippet.thumbnails.high.url,
@@ -233,27 +398,18 @@ export async function getActivities(channelId: string, maxResults: number = 15):
  */
 export async function getChannelDetails(channelId: string): Promise<ChannelsResponse> {
   return fetchFromYouTube<ChannelsResponse>('channels', {
-    part: 'snippet,statistics,topicDetails,brandingSettings',
+    part: 'snippet,statistics,topicDetails,brandingSettings,contentDetails',
     id: channelId,
+    maxResults: 15
   });
 }
 
 /**
  * Get formatted channel info with numeric values and formatted date
  * @param {string} channelId - YouTube channel ID
- * @returns {Promise<Object>} Formatted channel info
+ * @returns {Promise<FormattedChannelInfo>} Formatted channel info
  */
-export async function getChannelInfo(channelId: string): Promise<{
-  publishedAt: string; // Converted to human-readable format
-  viewCount: number;
-  commentCount: number;
-  subscriberCount: number;
-  hiddenSubscriberCount: boolean;
-  videoCount: number;
-  topicIds: string[];
-  topicCategories: string[];
-  keywords: string;
-}> {
+export async function getChannelInfo(channelId: string): Promise<FormattedChannelInfo> {
   const response = await getChannelDetails(channelId);
   
   if (response.items.length === 0) {
@@ -298,11 +454,9 @@ export async function getChannelSections(channelId: string): Promise<ChannelSect
 /**
  * Get featured channels from a YouTuber's channel
  * @param {string} channelId - YouTube channel ID
- * @returns {Promise<string[]>} List of featured channel IDs
+ * @returns {Promise<FeaturedChannels>} List of featured channel IDs
  */
-export async function getFeaturedChannels(channelId: string): Promise<{
-  channels: string[];
-}> {
+export async function getFeaturedChannels(channelId: string): Promise<FeaturedChannels> {
   const response = await getChannelSections(channelId);
   
   // Extract all channel IDs from channel sections
@@ -328,7 +482,9 @@ export async function getChannelVideos(channelId: string, maxResults: number = 2
   return fetchFromYouTube<SearchResponse>('search', {
     part: 'snippet',
     channelId,
-    maxResults
+    maxResults,
+    type: 'video',
+    order: 'date'
   });
 }
 
@@ -349,21 +505,9 @@ export async function getVideoDetails(videoIds: string | string[]): Promise<Vide
 /**
  * Get formatted video data
  * @param {string|string[]} videoIds - Single video ID or array of video IDs
- * @returns {Promise<Array>} Formatted video data
+ * @returns {Promise<FormattedVideoData[]>} Formatted video data
  */
-export async function getFormattedVideoData(videoIds: string | string[]): Promise<{
-  id: string;
-  publishedAt: string;
-  description: string;
-  tags: string[];
-  categoryId: string;
-  viewCount: number;
-  likeCount: number;
-  favoriteCount: number;
-  commentCount: number;
-  topicCategories: string[];
-  hasPaidProductPlacement: boolean;
-}[]> {
+export async function getFormattedVideoData(videoIds: string | string[]): Promise<FormattedVideoData[]> {
   const response = await getVideoDetails(videoIds);
   
   return response.items.map(item => ({
@@ -406,22 +550,13 @@ export async function getVideoComments(
  * @param {string} videoId - YouTube video ID
  * @param {number} maxResults - Maximum number of comments (default: 100)
  * @param {string} order - Sort order ('time' or 'relevance')
- * @returns {Promise<Object>} Formatted video comments
+ * @returns {Promise<FormattedVideoComments>} Formatted video comments
  */
 export async function getFormattedVideoComments(
   videoId: string, 
   maxResults: number = 100, 
   order: 'time' | 'relevance' = 'relevance'
-): Promise<{
-  comments: {
-    id: string;
-    authorName: string;
-    text: string;
-    likeCount: number;
-    publishedAt: string;
-    replyCount: number;
-  }[];
-}> {
+): Promise<FormattedVideoComments> {
   const response = await getVideoComments(videoId, maxResults, order);
   
   return {
