@@ -3,8 +3,8 @@
 import { useState, useEffect, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getChannelDetails } from '@/services/youtubeApi';
-import { Users, Eye, Video, Loader2, BarChart2, TrendingUp, Users as UsersIcon, MessageCircle, ListVideo, Calendar, MessageSquare, Share2, Zap, X } from 'lucide-react';
+import { getChannelDetails, getFeaturedChannels } from '@/services/youtubeApi';
+import { Users, Eye, Video, Loader2, BarChart2, TrendingUp, Users as UsersIcon, MessageCircle, ListVideo, Calendar, MessageSquare, Share2, Zap, X, ExternalLink } from 'lucide-react';
 import { formatNumber } from '@/components/utils';
 import ChannelActivity from '@/components/ChannelActivity';
 
@@ -74,6 +74,8 @@ export default function ChannelInfoPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedDashboard, setSelectedDashboard] = useState<'latestvideos'>('latestvideos');
+  const [otherChannels, setOtherChannels] = useState<any[]>([]);
+  const [loadingOtherChannels, setLoadingOtherChannels] = useState(false);
 
 
   // Limit description to specified word count
@@ -105,6 +107,44 @@ export default function ChannelInfoPage() {
           const channelData = response.items[0];
           console.log('Raw channel data:', channelData);
           setChannelData(channelData);
+          
+          // Fetch other channels info
+          setLoadingOtherChannels(true);
+          try {
+            const featuredChannelsData = await getFeaturedChannels(storedChannelId);
+            if (featuredChannelsData.channels.length > 0) {
+              // For each channel ID, fetch basic channel info
+              const channelsDetails = await Promise.all(
+                featuredChannelsData.channels.map(async (id: string) => {
+                  try {
+                    const response = await getChannelDetails(id);
+                    if (response.items.length > 0) {
+                      const channelInfo = response.items[0];
+                      return {
+                        id: channelInfo.id,
+                        title: channelInfo.snippet?.title || 'Unknown Channel',
+                        thumbnailUrl: channelInfo.snippet?.thumbnails?.default?.url || null,
+                        subscriberCount: channelInfo.statistics?.subscriberCount || '0'
+                      };
+                    }
+                    return null;
+                  } catch (err) {
+                    console.error(`Error fetching data for channel ${id}:`, err);
+                    return null;
+                  }
+                })
+              );
+              
+              // Filter out any null results
+              const validChannelsDetails = channelsDetails.filter(Boolean);
+              setOtherChannels(validChannelsDetails);
+            }
+          } catch (err) {
+            console.error('Error fetching other channels:', err);
+          } finally {
+            setLoadingOtherChannels(false);
+          }
+          
         } catch (err) {
           console.error('Error fetching channel data:', err);
           setError('Failed to load channel data. Please try again.');
@@ -119,6 +159,11 @@ export default function ChannelInfoPage() {
       router.push('/');
     }
   }, [router]);
+  
+  const handleSelectOtherChannel = (otherChannelId: string) => {
+    localStorage.setItem('selectedChannelId', otherChannelId);
+    window.location.reload();
+  };
 
   if (loading) {
     return (
@@ -247,6 +292,62 @@ export default function ChannelInfoPage() {
                   <div className="text-xs text-gray-500 mb-3">
                     <span className="bg-gray-100 px-1.5 py-0.5 rounded font-mono">{channelId}</span>
                   </div>
+                  
+                  {/* Other Channels Section */}
+                  {otherChannels.length > 0 && (
+                    <div className="mt-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-1 h-5 bg-gradient-to-b from-purple-500 to-blue-500 rounded-full"></div>
+                        <h2 className="text-sm font-semibold text-gray-800">Other Channels</h2>
+                      </div>
+                      
+                      <div className="space-y-2 mt-3">
+                        {otherChannels.map((channel, index) => (
+                          <motion.div 
+                            key={index}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.1 * index }}
+                            className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors duration-200"
+                            onClick={() => handleSelectOtherChannel(channel.id)}
+                          >
+                            <div className="flex-shrink-0 w-8 h-8 bg-purple-100 rounded-full overflow-hidden">
+                              {channel.thumbnailUrl ? (
+                                <img 
+                                  src={channel.thumbnailUrl} 
+                                  alt={channel.title}
+                                  className="w-full h-full object-cover" 
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center bg-purple-100">
+                                  <UsersIcon size={12} className="text-purple-500" />
+                                </div>
+                              )}
+                            </div>
+                            <div className="overflow-hidden">
+                              <div className="text-xs font-medium text-gray-900 truncate">{channel.title}</div>
+                              <div className="flex items-center gap-1">
+                                <span className="text-[10px] text-gray-500">
+                                  {parseInt(channel.subscriberCount).toLocaleString()} subscribers
+                                </span>
+                                <ExternalLink size={8} className="text-purple-500" />
+                              </div>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {loadingOtherChannels && (
+                    <div className="flex justify-center items-center p-4">
+                      <div className="animate-pulse flex space-x-1">
+                        <div className="w-1.5 h-1.5 bg-purple-400 rounded-full"></div>
+                        <div className="w-1.5 h-1.5 bg-purple-400 rounded-full"></div>
+                        <div className="w-1.5 h-1.5 bg-purple-400 rounded-full"></div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </motion.div>
               
@@ -410,13 +511,12 @@ export default function ChannelInfoPage() {
           className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"
           variants={fadeIn}
         >
-          <div className="p-4 border-b border-gray-100 flex justify-between items-center">
+          <div className="p-4 border-b border-gray-100 flex items-center gap-2 mb-3justify-between">
+            <div className="w-1.5 h-8 bg-gradient-to-b from-blue-500 to-purple-500 rounded-full"></div>
             <h2 className="text-lg font-semibold text-gray-800">Latest Videos</h2>
           </div>
           
-          <div className="border-t border-gray-200">
-            {renderDashboard()}
-          </div>
+          {renderDashboard()}
         </motion.div>
       </motion.div>
     </div>

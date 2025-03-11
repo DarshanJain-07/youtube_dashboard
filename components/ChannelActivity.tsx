@@ -2,9 +2,9 @@
 "use client"
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getActivities, getFormattedVideoData } from '../services/youtubeApi';
+import { getActivities, getFormattedVideoData, getVideoComments } from '../services/youtubeApi';
 import { formatNumber } from './utils';
-import { X } from 'lucide-react';
+import { X, MessageCircle } from 'lucide-react';
 
 interface VideoData {
   id: string;
@@ -22,15 +22,62 @@ interface VideoData {
   thumbnailUrl: string;
 }
 
+interface CommentData {
+  id: string;
+  authorName: string;
+  text: string;
+  likeCount: number;
+  publishedAt: string;
+  replyCount: number;
+}
+
 interface LatestVideosProps {
   channelId: string;
 }
+
+// Animation variants for consistent styling with page.tsx
+const animations = {
+  fadeIn: {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1, transition: { duration: 0.4 } }
+  },
+  slideUp: {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.5 } }
+  },
+  staggerContainer: {
+    hidden: { opacity: 0 },
+    visible: { 
+      opacity: 1, 
+      transition: { 
+        staggerChildren: 0.1,
+        delayChildren: 0.2
+      } 
+    }
+  },
+  cardItem: {
+    hidden: { opacity: 0, y: 20 },
+    visible: { 
+      opacity: 1, 
+      y: 0, 
+      transition: { 
+        type: "spring", 
+        stiffness: 100, 
+        damping: 15 
+      } 
+    }
+  }
+};
 
 const ChannelActivity: React.FC<LatestVideosProps> = ({ channelId }) => {
   const [videos, setVideos] = useState<VideoData[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedVideo, setSelectedVideo] = useState<VideoData | null>(null);
+  const [comments, setComments] = useState<CommentData[]>([]);
+  const [loadingComments, setLoadingComments] = useState<boolean>(false);
+  const [showComments, setShowComments] = useState<boolean>(false);
+  const [commentSortOrder, setCommentSortOrder] = useState<'time' | 'relevance'>('relevance');
 
   useEffect(() => {
     const fetchVideos = async () => {
@@ -99,10 +146,45 @@ const ChannelActivity: React.FC<LatestVideosProps> = ({ channelId }) => {
 
   const closeVideoDialog = () => {
     setSelectedVideo(null);
+    setShowComments(false);
     // Re-enable body scroll when dialog is closed
     document.body.style.overflow = 'auto';
   };
-
+  
+  const handleViewComments = async () => {
+    if (!selectedVideo) return;
+    
+    setLoadingComments(true);
+    setShowComments(true);
+    
+    try {
+      const response = await getVideoComments(selectedVideo.id, 100, commentSortOrder);
+      if (response.items && response.items.length > 0) {
+        const formattedComments = response.items.map(item => ({
+          id: item.id,
+          authorName: item.snippet.topLevelComment.snippet.authorDisplayName,
+          text: item.snippet.topLevelComment.snippet.textDisplay,
+          likeCount: item.snippet.topLevelComment.snippet.likeCount,
+          publishedAt: item.snippet.topLevelComment.snippet.publishedAt,
+          replyCount: item.snippet.totalReplyCount
+        }));
+        setComments(formattedComments);
+      } else {
+        setComments([]);
+      }
+    } catch (err) {
+      console.error('Error fetching comments:', err);
+    } finally {
+      setLoadingComments(false);
+    }
+  };
+  
+  const handleSortOrderChange = (order: 'time' | 'relevance') => {
+    setCommentSortOrder(order);
+    if (showComments && selectedVideo) {
+      handleViewComments();
+    }
+  };
 
   if (error) {
     return (
@@ -115,49 +197,65 @@ const ChannelActivity: React.FC<LatestVideosProps> = ({ channelId }) => {
   return (
     <div className="container mx-auto px-4 py-8">
       
-      {/* Thumbnail Grid */}
+      {/* Video Grid with improved styling */}
       <motion.div 
-        className="grid grid-cols-2 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.5 }}
+        variants={animations.staggerContainer}
+        initial="hidden"
+        animate="visible"
+        className="bg-white rounded-xl p-6 shadow-md border border-gray-100"
       >
-        {videos.map((video) => (
-          <motion.div 
-            key={video.id}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => openVideoDialog(video)}
-            className="cursor-pointer relative overflow-hidden rounded-lg shadow-md"
-          >
-            <img 
-              src={video.thumbnailUrl} 
-              alt={video.title} 
-              className="w-full aspect-video object-cover"
-            />
-            
-            {/* Hover overlay with title */}
+        <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {videos.map((video) => (
             <motion.div 
-              className="absolute inset-0 bg-black bg-opacity-50 flex items-end p-2 opacity-0 hover:opacity-100 transition-opacity"
+              key={video.id}
+              variants={animations.cardItem}
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => openVideoDialog(video)}
+              className="cursor-pointer relative overflow-hidden rounded-lg shadow-md border border-gray-200 group transition-all duration-300"
             >
-              <p className="text-white text-sm font-medium line-clamp-2">{video.title}</p>
-            </motion.div>
-
-            {/* Sponsored badge if applicable */}
-            {video.hasPaidProductPlacement && (
-              <div className="absolute top-2 right-2 bg-red-600 text-white text-xs px-2 py-1 rounded">
-                Sponsored
+              <div className="relative w-full aspect-video overflow-hidden">
+                <img 
+                  src={video.thumbnailUrl} 
+                  alt={video.title} 
+                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                />
+                
+                {/* View count and date overlay */}
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2 text-xs text-white">
+                  <div className="flex justify-between">
+                    <span>{formatNumber(video.viewCount)} views</span>
+                    <span>{new Date(video.publishedAt).toLocaleDateString()}</span>
+                  </div>
+                </div>
               </div>
-            )}
-          </motion.div>
-        ))}
-      </motion.div>
-
-      {videos.length === 0 && !loading && !error && (
-        <div className="text-center text-gray-500 py-10">
-          No videos found for this channel.
+             
+              {/* Sponsored badge if applicable */}
+              {video.hasPaidProductPlacement && (
+                <div className="absolute top-2 right-2 bg-red-600 text-white text-xs px-2 py-1 rounded">
+                  Sponsored
+                </div>
+              )}
+            </motion.div>
+          ))}
         </div>
-      )}
+        
+        {videos.length === 0 && !loading && !error && (
+          <div className="text-center text-gray-500 py-10">
+            No videos found for this channel.
+          </div>
+        )}
+        
+        {loading && (
+          <div className="flex justify-center py-10">
+            <div className="animate-pulse flex space-x-2">
+              <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+              <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+              <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+            </div>
+          </div>
+        )}
+      </motion.div>
 
       {/* Modal Dialog for Video Details */}
       <AnimatePresence>
@@ -170,7 +268,7 @@ const ChannelActivity: React.FC<LatestVideosProps> = ({ channelId }) => {
             onClick={closeVideoDialog}
           >
             <motion.div 
-              className="bg-white rounded-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto overflow-x-hidden relative shadow-2xl border border-gray-100"
+              className="bg-white rounded-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto overflow-x-hidden relative shadow-2xl border border-gray-100"
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
@@ -185,7 +283,7 @@ const ChannelActivity: React.FC<LatestVideosProps> = ({ channelId }) => {
                 }
               `}</style>
               
-              {/* Gradient accent */}
+              {/* Gradient accent - similar to page.tsx styling */}
               <div className="absolute inset-0 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl opacity-40 blur-md transform -translate-y-1 translate-x-1"></div>
 
               {/* Video Header with Close Button */}
@@ -212,7 +310,7 @@ const ChannelActivity: React.FC<LatestVideosProps> = ({ channelId }) => {
 
                 {/* Video Stats */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                  <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-md hover:shadow-lg transition-all duration-300">
+                  <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300">
                     <h4 className="text-lg font-semibold mb-2 text-gray-800">Video Statistics</h4>
                     <ul className="space-y-2 text-gray-700">
                       <li><span className="font-medium">Published:</span> {formatDate(selectedVideo.publishedAt)}</li>
@@ -225,7 +323,7 @@ const ChannelActivity: React.FC<LatestVideosProps> = ({ channelId }) => {
                     </ul>
                   </div>
 
-                  <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-md hover:shadow-lg transition-all duration-300">
+                  <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300">
                     <h4 className="text-lg font-semibold mb-2 text-gray-800">Topic Categories</h4>
                     {selectedVideo.topicCategories.length > 0 ? (
                       <ul className="space-y-1 text-gray-700 break-words">
@@ -243,14 +341,14 @@ const ChannelActivity: React.FC<LatestVideosProps> = ({ channelId }) => {
 
                 {/* Video Description */}
                 <div className="mb-6">
-                  <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-md hover:shadow-lg transition-all duration-300">
+                  <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300">
                     <h4 className="text-lg font-semibold mb-2 text-gray-800">Description</h4>
                     <p className="text-gray-700 whitespace-pre-line">{selectedVideo.description}</p>
                   </div>
                 </div>
 
                 {/* Tags */}
-                <div>
+                <div className="mb-6">
                   <h4 className="text-lg font-semibold mb-2 text-gray-800">Tags ({selectedVideo.tags.length})</h4>
                   {selectedVideo.tags.length > 0 ? (
                     <div className="flex flex-wrap gap-2">
@@ -267,6 +365,87 @@ const ChannelActivity: React.FC<LatestVideosProps> = ({ channelId }) => {
                     <p className="text-gray-600">No tags available</p>
                   )}
                 </div>
+                
+                {/* Action Button */}
+                <div className="mb-6">
+                  <button
+                    onClick={handleViewComments}
+                    className={`flex items-center justify-center w-full gap-2 p-3 rounded-lg transition-all duration-300 ${
+                      showComments 
+                        ? 'bg-blue-600 text-white shadow-md' 
+                        : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+                    }`}
+                  >
+                    <MessageCircle size={18} />
+                    <span>View Comments</span>
+                    <span className="bg-white/20 px-2 py-0.5 rounded-full text-xs">
+                      {formatNumber(selectedVideo.commentCount)}
+                    </span>
+                  </button>
+                </div>
+                
+                {/* Comments Section */}
+                {showComments && (
+                  <div className="mb-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="text-lg font-semibold text-gray-800">Comments</h4>
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={() => handleSortOrderChange('relevance')}
+                          className={`px-3 py-1 text-sm rounded-full ${
+                            commentSortOrder === 'relevance' 
+                              ? 'bg-blue-600 text-white' 
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                        >
+                          Relevance
+                        </button>
+                        <button 
+                          onClick={() => handleSortOrderChange('time')}
+                          className={`px-3 py-1 text-sm rounded-full ${
+                            commentSortOrder === 'time' 
+                              ? 'bg-blue-600 text-white' 
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                        >
+                          Newest
+                        </button>
+                      </div>
+                    </div>
+                    
+                    {loadingComments ? (
+                      <div className="flex justify-center py-10">
+                        <div className="animate-pulse flex space-x-2">
+                          <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                          <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                          <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                        </div>
+                      </div>
+                    ) : comments.length > 0 ? (
+                      <div className="space-y-4 max-h-[400px] overflow-y-auto px-2">
+                        {comments.map(comment => (
+                          <div key={comment.id} className="bg-gray-50 p-4 rounded-lg">
+                            <div className="flex justify-between mb-2">
+                              <span className="font-medium text-blue-700">{comment.authorName}</span>
+                              <span className="text-xs text-gray-500">{formatDate(comment.publishedAt)}</span>
+                            </div>
+                            <p className="text-gray-700" dangerouslySetInnerHTML={{ __html: comment.text }}></p>
+                            <div className="flex justify-between mt-2 text-xs text-gray-500">
+                              <span>{comment.likeCount} likes</span>
+                              {comment.replyCount > 0 && (
+                                <span>{comment.replyCount} replies</span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-10 text-gray-500">
+                        No comments found for this video.
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </motion.div>
           </motion.div>

@@ -191,8 +191,6 @@ export default function ChannelSearch({
               type="submit"
               disabled={isLoading}
               className="h-full px-4 sm:px-6 py-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium disabled:opacity-70 disabled:cursor-not-allowed transition-colors flex items-center justify-center flex-shrink-0"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
             >
               {isLoading ? (
                 <Loader2 size={20} className="animate-spin" />
