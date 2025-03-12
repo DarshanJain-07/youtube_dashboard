@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, ReactNode, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { getChannelDetails, getFeaturedChannels, getFormattedVideoData } from '@/services/youtubeApi';
 import { 
   Users, Eye, Video, Loader2, TrendingUp, 
@@ -16,12 +16,17 @@ import {
   calculateChannelEfficiencyIndex,
   calculateAudienceRetentionStrength,
   calculateChannelGrowthMomentum,
-  calculateContentSubscriberEfficiency
+  calculateContentSubscriberEfficiency,
+  limitWords,
+  fadeIn,
+  stagger,
+  fadeInRight,
+  marqueeStyles,
+  addMarqueeStylesToDocument,
+  updateTooltipData
 } from '@/components/utils';
+import { AnimationVariant, DashboardType, ChannelMetrics, TooltipState } from '@/components/types';
 import ChannelActivity from '@/components/ChannelActivity';
-
-// Dashboard type definition
-type DashboardType = 'latestvideos';
 
 // Dashboard components - replace with your actual components
 const LatestVideos = () => {
@@ -53,49 +58,13 @@ const LatestVideos = () => {
   return <ChannelActivity channelId={channelId} />;
 };
 
-
-// Animation variants
-const fadeIn = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.6 } }
-};
-
-const stagger = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1
-    }
-  }
-};
-
-const fadeInRight = {
-  hidden: { opacity: 0, x: -20 },
-  visible: { 
-    opacity: 1, 
-    x: 0,
-    transition: { duration: 0.5, ease: "easeOut" }
-  }
-};
-
-// Add TypeScript interface for metrics
-interface ChannelMetrics {
-  subscriberConversionRate: number;
-  channelActivityRatio: number;
-  audienceRetentionStrength: number;
-  channelGrowthMomentum: number;
-  contentSubscriberEfficiency: number;
-  channelEfficiencyIndex?: number;
-}
-
 export default function ChannelInfoPage() {
   const router = useRouter();
   const [channelId, setChannelId] = useState<string | null>(null);
   const [channelData, setChannelData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedDashboard, setSelectedDashboard] = useState<'latestvideos'>('latestvideos');
+  const [selectedDashboard, setSelectedDashboard] = useState<DashboardType>('latestvideos');
   const [otherChannels, setOtherChannels] = useState<any[]>([]);
   const [loadingOtherChannels, setLoadingOtherChannels] = useState(false);
   const [channelMetrics, setChannelMetrics] = useState<ChannelMetrics>({} as ChannelMetrics);
@@ -103,9 +72,9 @@ export default function ChannelInfoPage() {
   const [topTags, setTopTags] = useState<string[]>([]);
   
   // Enhanced tooltip state
-  const [tooltipState, setTooltipState] = useState({
+  const [tooltipState, setTooltipState] = useState<TooltipState>({
     active: false,
-    id: null as string | null,
+    id: null,
     title: '',
     content: '',
     x: 0,
@@ -118,48 +87,17 @@ export default function ChannelInfoPage() {
   const currentHoveredElementRef = useRef<HTMLElement | null>(null);
   const tooltipContainerRef = useRef<HTMLDivElement | null>(null);
 
+  // Apply marquee styles on component mount
+  useEffect(() => {
+    addMarqueeStylesToDocument();
+  }, []);
+
   // Clear any pending timeouts
   const clearTooltipTimeout = useCallback(() => {
     if (tooltipTimeoutRef.current) {
       clearTimeout(tooltipTimeoutRef.current);
       tooltipTimeoutRef.current = null;
     }
-  }, []);
-
-  // Helper function to update tooltip data
-  const updateTooltipData = useCallback((element: HTMLElement | null) => {
-    if (!element) {
-      return {
-        id: null,
-        title: '',
-        content: '',
-        isTop: false,
-        x: 0,
-        y: 0
-      };
-    }
-    
-    const tooltipId = element.getAttribute('data-tooltip-id');
-    const tooltipTitle = element.getAttribute('data-tooltip-title') || '';
-    const tooltipContent = element.getAttribute('data-tooltip-content') || '';
-    
-    // Get the container to determine position
-    const container = element.closest('.marquee-container') as HTMLElement;
-    const isTop = container?.dataset?.tooltipPosition === 'top';
-    
-    // Calculate position
-    const rect = element.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const y = isTop ? rect.top : rect.bottom;
-    
-    return {
-      id: tooltipId,
-      title: tooltipTitle,
-      content: tooltipContent,
-      isTop: isTop,
-      x: centerX,
-      y: y
-    };
   }, []);
 
   // Handle mouse move events globally
@@ -180,12 +118,12 @@ export default function ChannelInfoPage() {
           const tooltipData = updateTooltipData(cardElement);
           setTooltipState({
             active: true,
-            id: tooltipData.id,
-            title: tooltipData.title,
-            content: tooltipData.content,
-            x: tooltipData.x,
-            y: tooltipData.y,
-            isTop: tooltipData.isTop
+            id: tooltipData.id || null,
+            title: tooltipData.title || '',
+            content: tooltipData.content || '',
+            x: tooltipData.x || 0,
+            y: tooltipData.y || 0,
+            isTop: tooltipData.isTop || false
           });
         }, 30); // Shorter delay for more responsive feel
       } else {
@@ -198,7 +136,7 @@ export default function ChannelInfoPage() {
         }, 80);
       }
     }
-  }, [clearTooltipTimeout, updateTooltipData]);
+  }, [clearTooltipTimeout]);
 
   // Set up global mouse tracker
   useEffect(() => {
@@ -211,14 +149,6 @@ export default function ChannelInfoPage() {
       clearTooltipTimeout();
     };
   }, [handleMouseMove, clearTooltipTimeout]);
-
-  // Limit description to specified word count
-  const limitWords = (text: string, wordCount: number) => {
-    if (!text) return '';
-    const words = text.split(/\s+/);
-    if (words.length <= wordCount) return text;
-    return words.slice(0, wordCount).join(' ') + '...';
-  };
 
   useEffect(() => {
     // Retrieve the channelId from localStorage
@@ -835,7 +765,7 @@ export default function ChannelInfoPage() {
                               <span className="text-xs text-gray-500">Growth Momentum</span>
                             </div>
                             <div className="font-semibold text-gray-900 text-sm">
-                              {formatNumber(channelMetrics.channelGrowthMomentum)}
+                              {formatNumber(channelMetrics.channelGrowthMomentum.toFixed(2))}
                             </div>
                           </div>
                         )}
@@ -855,7 +785,7 @@ export default function ChannelInfoPage() {
                               <span className="text-xs text-gray-500">Subs per Video</span>
                             </div>
                             <div className="font-semibold text-gray-900 text-sm">
-                              {formatNumber(channelMetrics.contentSubscriberEfficiency)}
+                              {formatNumber(channelMetrics.contentSubscriberEfficiency.toFixed(2))}
                             </div>
                           </div>
                         )}
@@ -987,46 +917,4 @@ export default function ChannelInfoPage() {
       </motion.div>
     </div>
   );
-}
-
-// Update the CSS for the marquee
-const styles = `
-  @keyframes marquee {
-    0% { transform: translateX(0); }
-    100% { transform: translateX(-50%); }
-  }
-  
-  .animate-marquee-pausable {
-    animation: marquee 40s linear infinite;
-    min-width: 200%;
-  }
-  
-  .animate-marquee-pausable:hover {
-    animation-play-state: paused;
-  }
-  
-  .marquee-container {
-    position: relative;
-  }
-  
-  .marquee-container:hover .animate-marquee-pausable {
-    animation-play-state: paused;
-  }
-  
-  /* Add this to ensure tooltips don't get stuck */
-  [data-tooltip-id] {
-    cursor: pointer;
-    transition: transform 0.2s ease;
-  }
-  
-  [data-tooltip-id]:hover {
-    z-index: 1;
-  }
-`;
-
-// Add the styles to the document
-if (typeof document !== 'undefined') {
-  const styleElement = document.createElement('style');
-  styleElement.innerHTML = styles;
-  document.head.appendChild(styleElement);
 }

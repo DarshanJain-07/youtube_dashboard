@@ -13,6 +13,36 @@ export interface ActivitySnippet {
   type: 'upload';
 }
 
+// Animation variants
+export interface AnimationVariant {
+  hidden: any;
+  visible: any;
+}
+
+// Dashboard type definition
+export type DashboardType = 'latestvideos';
+
+// Channel metrics interface
+export interface ChannelMetrics {
+  subscriberConversionRate: number;
+  channelActivityRatio: number;
+  audienceRetentionStrength: number;
+  channelGrowthMomentum: number;
+  contentSubscriberEfficiency: number;
+  channelEfficiencyIndex?: number;
+}
+
+// Tooltip state interface
+export interface TooltipState {
+  active: boolean;
+  id: string | null;
+  title: string;
+  content: string;
+  x: number;
+  y: number;
+  isTop: boolean;
+}
+
 export interface ActivityContentDetails {
   upload?: {
     videoId: string;

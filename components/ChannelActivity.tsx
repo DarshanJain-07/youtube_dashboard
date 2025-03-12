@@ -9,8 +9,6 @@ import {
   calculateEngagementRatio, 
   calculateEngagementDepthScore, 
   calculateViewToSubRatio, 
-  calculateVideoEfficiencyIndex, 
-  calculateDailyEngagementDensity, 
   calculateAudienceInteractionRatio 
 } from './utils';
 import { FormattedChannelInfo } from './types';
@@ -400,46 +398,6 @@ const ChannelActivity: React.FC<LatestVideosProps> = ({ channelId }) => {
                           {showTooltip === 'viewToSubRatio' && (
                             <div className="mt-2 p-2 bg-gray-50 rounded-md text-xs text-gray-600 border-l-2 border-blue-400" style={tooltipStyles}>
                               {tooltipContent.viewToSubRatio}
-                            </div>
-                          )}
-                        </div>
-                        
-                        <div className="bg-white p-3 rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300">
-                          <div className="flex justify-between items-center">
-                            <h5 className="text-sm font-medium text-gray-700">Video Efficiency Index</h5>
-                            <button 
-                              onClick={() => handleTooltipToggle('videoEfficiencyIndex')}
-                              className="text-gray-400 hover:text-blue-500 transition-colors"
-                            >
-                              <Info size={16} />
-                            </button>
-                          </div>
-                          <p className="text-2xl font-bold text-blue-600 mt-1">
-                            {calculateVideoEfficiencyIndex(selectedVideo, channelInfo).toFixed(2)}
-                          </p>
-                          {showTooltip === 'videoEfficiencyIndex' && (
-                            <div className="mt-2 p-2 bg-gray-50 rounded-md text-xs text-gray-600 border-l-2 border-blue-400" style={tooltipStyles}>
-                              {tooltipContent.videoEfficiencyIndex}
-                            </div>
-                          )}
-                        </div>
-                        
-                        <div className="bg-white p-3 rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300">
-                          <div className="flex justify-between items-center">
-                            <h5 className="text-sm font-medium text-gray-700">Daily Engagement Density</h5>
-                            <button 
-                              onClick={() => handleTooltipToggle('dailyEngagementDensity')}
-                              className="text-gray-400 hover:text-blue-500 transition-colors"
-                            >
-                              <Info size={16} />
-                            </button>
-                          </div>
-                          <p className="text-2xl font-bold text-blue-600 mt-1">
-                            {formatNumber(calculateDailyEngagementDensity(selectedVideo))}
-                          </p>
-                          {showTooltip === 'dailyEngagementDensity' && (
-                            <div className="mt-2 p-2 bg-gray-50 rounded-md text-xs text-gray-600 border-l-2 border-blue-400" style={tooltipStyles}>
-                              {tooltipContent.dailyEngagementDensity}
                             </div>
                           )}
                         </div>
