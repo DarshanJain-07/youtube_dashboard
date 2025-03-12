@@ -1,11 +1,23 @@
 "use client";
 
-import { useState, useEffect, ReactNode } from 'react';
+import { useState, useEffect, ReactNode, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getChannelDetails, getFeaturedChannels } from '@/services/youtubeApi';
-import { Users, Eye, Video, Loader2, BarChart2, TrendingUp, Users as UsersIcon, MessageCircle, ListVideo, Calendar, MessageSquare, Share2, Zap, X, ExternalLink } from 'lucide-react';
-import { formatNumber, formatDateLong } from '@/components/utils';
+import { getChannelDetails, getFeaturedChannels, getFormattedVideoData } from '@/services/youtubeApi';
+import { 
+  Users, Eye, Video, Loader2, TrendingUp, 
+  Users as UsersIcon, Calendar, Share2, ExternalLink, 
+  Award, Activity, Gauge, Repeat, TrendingUp as TrendingUpIcon, Layers
+} from 'lucide-react';
+import { 
+  formatNumber, formatDateLong, 
+  calculateSubscriberConversionRate,
+  calculateChannelActivityRatio,
+  calculateChannelEfficiencyIndex,
+  calculateAudienceRetentionStrength,
+  calculateChannelGrowthMomentum,
+  calculateContentSubscriberEfficiency
+} from '@/components/utils';
 import ChannelActivity from '@/components/ChannelActivity';
 
 // Dashboard type definition
@@ -67,6 +79,16 @@ const fadeInRight = {
   }
 };
 
+// Add TypeScript interface for metrics
+interface ChannelMetrics {
+  subscriberConversionRate: number;
+  channelActivityRatio: number;
+  audienceRetentionStrength: number;
+  channelGrowthMomentum: number;
+  contentSubscriberEfficiency: number;
+  channelEfficiencyIndex?: number;
+}
+
 export default function ChannelInfoPage() {
   const router = useRouter();
   const [channelId, setChannelId] = useState<string | null>(null);
@@ -76,7 +98,119 @@ export default function ChannelInfoPage() {
   const [selectedDashboard, setSelectedDashboard] = useState<'latestvideos'>('latestvideos');
   const [otherChannels, setOtherChannels] = useState<any[]>([]);
   const [loadingOtherChannels, setLoadingOtherChannels] = useState(false);
+  const [channelMetrics, setChannelMetrics] = useState<ChannelMetrics>({} as ChannelMetrics);
+  const [videoData, setVideoData] = useState<any[]>([]);
+  const [topTags, setTopTags] = useState<string[]>([]);
+  
+  // Enhanced tooltip state
+  const [tooltipState, setTooltipState] = useState({
+    active: false,
+    id: null as string | null,
+    title: '',
+    content: '',
+    x: 0,
+    y: 0,
+    isTop: false
+  });
+  
+  // Refs for tracking tooltip state
+  const tooltipTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const currentHoveredElementRef = useRef<HTMLElement | null>(null);
+  const tooltipContainerRef = useRef<HTMLDivElement | null>(null);
 
+  // Clear any pending timeouts
+  const clearTooltipTimeout = useCallback(() => {
+    if (tooltipTimeoutRef.current) {
+      clearTimeout(tooltipTimeoutRef.current);
+      tooltipTimeoutRef.current = null;
+    }
+  }, []);
+
+  // Helper function to update tooltip data
+  const updateTooltipData = useCallback((element: HTMLElement | null) => {
+    if (!element) {
+      return {
+        id: null,
+        title: '',
+        content: '',
+        isTop: false,
+        x: 0,
+        y: 0
+      };
+    }
+    
+    const tooltipId = element.getAttribute('data-tooltip-id');
+    const tooltipTitle = element.getAttribute('data-tooltip-title') || '';
+    const tooltipContent = element.getAttribute('data-tooltip-content') || '';
+    
+    // Get the container to determine position
+    const container = element.closest('.marquee-container') as HTMLElement;
+    const isTop = container?.dataset?.tooltipPosition === 'top';
+    
+    // Calculate position
+    const rect = element.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const y = isTop ? rect.top : rect.bottom;
+    
+    return {
+      id: tooltipId,
+      title: tooltipTitle,
+      content: tooltipContent,
+      isTop: isTop,
+      x: centerX,
+      y: y
+    };
+  }, []);
+
+  // Handle mouse move events globally
+  const handleMouseMove = useCallback((event: MouseEvent) => {
+    const targetElement = event.target as HTMLElement;
+    const cardElement = targetElement.closest('[data-tooltip-id]') as HTMLElement | null;
+    
+    if (cardElement !== currentHoveredElementRef.current) {
+      // Element changed
+      clearTooltipTimeout();
+      
+      if (cardElement) {
+        // Mouse entered a new tooltip element
+        currentHoveredElementRef.current = cardElement;
+        
+        // Show tooltip after a short delay
+        tooltipTimeoutRef.current = setTimeout(() => {
+          const tooltipData = updateTooltipData(cardElement);
+          setTooltipState({
+            active: true,
+            id: tooltipData.id,
+            title: tooltipData.title,
+            content: tooltipData.content,
+            x: tooltipData.x,
+            y: tooltipData.y,
+            isTop: tooltipData.isTop
+          });
+        }, 30); // Shorter delay for more responsive feel
+      } else {
+        // Mouse left a tooltip element
+        currentHoveredElementRef.current = null;
+        
+        // Hide tooltip after a short delay
+        tooltipTimeoutRef.current = setTimeout(() => {
+          setTooltipState(prev => ({ ...prev, active: false }));
+        }, 80);
+      }
+    }
+  }, [clearTooltipTimeout, updateTooltipData]);
+
+  // Set up global mouse tracker
+  useEffect(() => {
+    // Add the event listener to the document for global tracking
+    document.addEventListener('mousemove', handleMouseMove);
+    
+    return () => {
+      // Clean up
+      document.removeEventListener('mousemove', handleMouseMove);
+      clearTooltipTimeout();
+    };
+  }, [handleMouseMove, clearTooltipTimeout]);
 
   // Limit description to specified word count
   const limitWords = (text: string, wordCount: number) => {
@@ -107,6 +241,111 @@ export default function ChannelInfoPage() {
           const channelData = response.items[0];
           console.log('Raw channel data:', channelData);
           setChannelData(channelData);
+          
+          // Fetch video data for channel metrics calculations
+          try {
+            const videosResponse = await getFormattedVideoData([storedChannelId]);
+            setVideoData(videosResponse);
+            
+            // Extract and count all tags to find most used tags
+            const allTags: string[] = [];
+            const tagCounts: {[key: string]: number} = {};
+            
+            videosResponse.forEach((video: any) => {
+              if (video.tags && video.tags.length) {
+                video.tags.forEach((tag: string) => {
+                  if (!tagCounts[tag]) tagCounts[tag] = 0;
+                  tagCounts[tag]++;
+                  allTags.push(tag);
+                });
+              }
+            });
+            
+            // Get top 5 most used tags
+            const sortedTags = Object.keys(tagCounts).sort((a, b) => tagCounts[b] - tagCounts[a]);
+            setTopTags(sortedTags.slice(0, 5));
+            
+            // Calculate channel metrics
+            if (channelData) {
+              const metrics: ChannelMetrics = {
+                subscriberConversionRate: calculateSubscriberConversionRate({
+                  subscriberCount: parseInt(channelData.statistics.subscriberCount),
+                  viewCount: parseInt(channelData.statistics.viewCount),
+                  publishedAt: channelData.snippet.publishedAt,
+                  commentCount: parseInt(channelData.statistics.commentCount),
+                  hiddenSubscriberCount: channelData.statistics.hiddenSubscriberCount,
+                  videoCount: parseInt(channelData.statistics.videoCount),
+                  topicIds: channelData.topicDetails?.topicIds || [],
+                  topicCategories: channelData.topicDetails?.topicCategories || [],
+                  keywords: channelData.brandingSettings?.channel?.keywords || ''
+                }),
+                channelActivityRatio: calculateChannelActivityRatio({
+                  subscriberCount: parseInt(channelData.statistics.subscriberCount),
+                  viewCount: parseInt(channelData.statistics.viewCount),
+                  publishedAt: channelData.snippet.publishedAt,
+                  commentCount: parseInt(channelData.statistics.commentCount),
+                  hiddenSubscriberCount: channelData.statistics.hiddenSubscriberCount,
+                  videoCount: parseInt(channelData.statistics.videoCount),
+                  topicIds: channelData.topicDetails?.topicIds || [],
+                  topicCategories: channelData.topicDetails?.topicCategories || [],
+                  keywords: channelData.brandingSettings?.channel?.keywords || ''
+                }),
+                audienceRetentionStrength: calculateAudienceRetentionStrength({
+                  subscriberCount: parseInt(channelData.statistics.subscriberCount),
+                  viewCount: parseInt(channelData.statistics.viewCount),
+                  publishedAt: channelData.snippet.publishedAt,
+                  commentCount: parseInt(channelData.statistics.commentCount),
+                  hiddenSubscriberCount: channelData.statistics.hiddenSubscriberCount,
+                  videoCount: parseInt(channelData.statistics.videoCount),
+                  topicIds: channelData.topicDetails?.topicIds || [],
+                  topicCategories: channelData.topicDetails?.topicCategories || [],
+                  keywords: channelData.brandingSettings?.channel?.keywords || ''
+                }),
+                channelGrowthMomentum: calculateChannelGrowthMomentum({
+                  subscriberCount: parseInt(channelData.statistics.subscriberCount),
+                  viewCount: parseInt(channelData.statistics.viewCount),
+                  publishedAt: channelData.snippet.publishedAt,
+                  commentCount: parseInt(channelData.statistics.commentCount),
+                  hiddenSubscriberCount: channelData.statistics.hiddenSubscriberCount,
+                  videoCount: parseInt(channelData.statistics.videoCount),
+                  topicIds: channelData.topicDetails?.topicIds || [],
+                  topicCategories: channelData.topicDetails?.topicCategories || [],
+                  keywords: channelData.brandingSettings?.channel?.keywords || ''
+                }),
+                contentSubscriberEfficiency: calculateContentSubscriberEfficiency({
+                  subscriberCount: parseInt(channelData.statistics.subscriberCount),
+                  viewCount: parseInt(channelData.statistics.viewCount),
+                  publishedAt: channelData.snippet.publishedAt,
+                  commentCount: parseInt(channelData.statistics.commentCount),
+                  hiddenSubscriberCount: channelData.statistics.hiddenSubscriberCount,
+                  videoCount: parseInt(channelData.statistics.videoCount),
+                  topicIds: channelData.topicDetails?.topicIds || [],
+                  topicCategories: channelData.topicDetails?.topicCategories || [],
+                  keywords: channelData.brandingSettings?.channel?.keywords || ''
+                }),
+              };
+              
+              // Calculate channel efficiency index if we have videos
+              if (videosResponse.length > 0) {
+                metrics.channelEfficiencyIndex = calculateChannelEfficiencyIndex({
+                  subscriberCount: parseInt(channelData.statistics.subscriberCount),
+                  viewCount: parseInt(channelData.statistics.viewCount),
+                  publishedAt: channelData.snippet.publishedAt,
+                  commentCount: parseInt(channelData.statistics.commentCount),
+                  hiddenSubscriberCount: channelData.statistics.hiddenSubscriberCount,
+                  videoCount: parseInt(channelData.statistics.videoCount),
+                  topicIds: channelData.topicDetails?.topicIds || [],
+                  topicCategories: channelData.topicDetails?.topicCategories || [],
+                  keywords: channelData.brandingSettings?.channel?.keywords || ''
+                }, videosResponse);
+              }
+              
+              setChannelMetrics(metrics);
+            }
+            
+          } catch (err) {
+            console.error('Error fetching video data for metrics:', err);
+          }
           
           // Fetch other channels info
           setLoadingOtherChannels(true);
@@ -352,87 +591,318 @@ export default function ChannelInfoPage() {
                 className="md:col-span-9"
                 variants={fadeIn}
               >
-                {/* Stats in horizontal layout */}
-                <div className="grid grid-cols-3 gap-3 mb-4">
-                  <div className="bg-gray-50 rounded-lg p-3 border border-gray-100 flex flex-col justify-center h-full shadow-md hover:shadow-lg transition-shadow duration-300 transform hover:-translate-y-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <div className="w-7 h-7 rounded-full bg-red-50 flex items-center justify-center text-red-500">
-                        <Users size={14} />
-                      </div>
-                      <span className="text-xs text-gray-500">Subscribers</span>
-                    </div>
-                    <div className="font-semibold text-gray-900">
-                      {hiddenSubscriberCount ? 'Hidden' : (subscriberCount ? formatNumber(subscriberCount) : 'N/A')}
-                    </div>
+                {/* Channel Metrics Marquee */}
+                <div className="mb-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-1 h-5 bg-gradient-to-b from-blue-500 to-indigo-600 rounded-full"></div>
+                    <h2 className="text-base font-semibold text-gray-800">Channel Metrics</h2>
                   </div>
                   
-                  <div className="bg-gray-50 rounded-lg p-3 border border-gray-100 flex flex-col justify-center h-full shadow-md hover:shadow-lg transition-shadow duration-300 transform hover:-translate-y-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <div className="w-7 h-7 rounded-full bg-blue-50 flex items-center justify-center text-blue-500">
-                        <Eye size={14} />
-                      </div>
-                      <span className="text-xs text-gray-500">Total Views</span>
-                    </div>
-                    <div className="font-semibold text-gray-900">
-                      {viewCount ? formatNumber(viewCount) : 'N/A'}
-                    </div>
-                  </div>
-                  
-                  <div className="bg-gray-50 rounded-lg p-3 border border-gray-100 flex flex-col justify-center h-full shadow-md hover:shadow-lg transition-shadow duration-300 transform hover:-translate-y-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <div className="w-7 h-7 rounded-full bg-green-50 flex items-center justify-center text-green-500">
-                        <Video size={14} />
-                      </div>
-                      <span className="text-xs text-gray-500">Videos</span>
-                    </div>
-                    <div className="font-semibold text-gray-900">
-                      {videoCount ? formatNumber(videoCount) : 'N/A'}
-                    </div>
-                  </div>
-                </div>
+                  <div className="relative bg-gradient-to-tr from-gray-50 to-white rounded-lg border border-gray-100 shadow-md p-2">
+                    {/* First row of marquee */}
+                    <div className="marquee-container overflow-hidden" data-tooltip-position="bottom">
+                      <div className="animate-marquee-pausable whitespace-nowrap flex flex-nowrap gap-3 py-1">
+                        {/* First row metrics */}
+                        
+                        {/* Subscribers */}
+                        <div 
+                          className="inline-block flex-shrink-0 bg-gray-50 rounded-lg p-3 border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-300 transform hover:-translate-y-1 relative min-w-[180px]"
+                          data-tooltip-id="subscribers"
+                          data-tooltip-content="The total number of subscribers to your channel. This is a key growth indicator and measures your channel's ability to build a loyal audience."
+                          data-tooltip-title="Subscribers"
+                        >
+                          <div className="flex items-center gap-2 mb-1">
+                            <div className="w-7 h-7 rounded-full bg-red-50 flex items-center justify-center text-red-500">
+                              <Users size={14} />
+                            </div>
+                            <span className="text-xs text-gray-500">Subscribers</span>
+                          </div>
+                          <div className="font-semibold text-gray-900 text-sm">
+                            {hiddenSubscriberCount ? 'Hidden' : (subscriberCount ? formatNumber(subscriberCount) : 'N/A')}
+                          </div>
+                        </div>
+                        
+                        {/* Total Views */}
+                        <div 
+                          className="inline-block flex-shrink-0 bg-gray-50 rounded-lg p-3 border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-300 transform hover:-translate-y-1 relative min-w-[180px]"
+                          data-tooltip-id="totalViews"
+                          data-tooltip-content="The cumulative number of views across all your videos. This represents your channel's overall reach and visibility on the platform."
+                          data-tooltip-title="Total Views"
+                        >
+                          <div className="flex items-center gap-2 mb-1">
+                            <div className="w-7 h-7 rounded-full bg-blue-50 flex items-center justify-center text-blue-500">
+                              <Eye size={14} />
+                            </div>
+                            <span className="text-xs text-gray-500">Total Views</span>
+                          </div>
+                          <div className="font-semibold text-gray-900 text-sm">
+                            {viewCount ? formatNumber(viewCount) : 'N/A'}
+                          </div>
+                        </div>
+                        
+                        {/* Videos */}
+                        <div 
+                          className="inline-block flex-shrink-0 bg-gray-50 rounded-lg p-3 border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-300 transform hover:-translate-y-1 relative min-w-[180px]"
+                          data-tooltip-id="videos"
+                          data-tooltip-content="The total number of videos uploaded to your channel. This indicates your content production volume and consistency over time."
+                          data-tooltip-title="Videos"
+                        >
+                          <div className="flex items-center gap-2 mb-1">
+                            <div className="w-7 h-7 rounded-full bg-green-50 flex items-center justify-center text-green-500">
+                              <Video size={14} />
+                            </div>
+                            <span className="text-xs text-gray-500">Videos</span>
+                          </div>
+                          <div className="font-semibold text-gray-900 text-sm">
+                            {videoCount ? formatNumber(videoCount) : 'N/A'}
+                          </div>
+                        </div>
+                        
+                        {/* Created On */}
+                        <div 
+                          className="inline-block flex-shrink-0 bg-gray-50 rounded-lg p-3 border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-300 transform hover:-translate-y-1 relative min-w-[180px]"
+                          data-tooltip-id="createdOn"
+                          data-tooltip-content="When your channel was created. A longer history on the platform can indicate more established presence and audience relationships."
+                          data-tooltip-title="Channel Age"
+                        >
+                          <div className="flex items-center gap-2 mb-1">
+                            <div className="w-7 h-7 rounded-full bg-purple-50 flex items-center justify-center text-purple-500">
+                              <Calendar size={14} />
+                            </div>
+                            <span className="text-xs text-gray-500">Created On</span>
+                          </div>
+                          <div className="font-semibold text-gray-900 text-sm">
+                            {formattedPublishedAt}
+                          </div>
+                        </div>
+                        
+                        {/* Avg. Views per Video */}
+                        <div
+                          className="inline-block flex-shrink-0 bg-gray-50 rounded-lg p-3 border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-300 transform hover:-translate-y-1 relative min-w-[180px]"
+                          data-tooltip-id="avgViews"
+                          data-tooltip-content="Total views divided by number of videos, indicating the typical performance of your content and helping identify if your channel has consistent audience reach."
+                          data-tooltip-title="Average Views per Video"
+                        >
+                          <div className="flex items-center gap-2 mb-1">
+                            <div className="w-7 h-7 rounded-full bg-yellow-50 flex items-center justify-center text-yellow-500">
+                              <TrendingUp size={14} />
+                            </div>
+                            <span className="text-xs text-gray-500">Avg. Views per Video</span>
+                          </div>
+                          <div className="font-semibold text-gray-900 text-sm">
+                            {viewCount && videoCount ? formatNumber(Math.round(parseInt(viewCount) / parseInt(videoCount))) : 'N/A'}
+                          </div>
+                        </div>
+                        
+                        {/* Engagement Rate */}
+                        <div
+                          className="inline-block flex-shrink-0 bg-gray-50 rounded-lg p-3 border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-300 transform hover:-translate-y-1 relative min-w-[180px]"
+                          data-tooltip-id="engagementRate"
+                          data-tooltip-content="Average views per video divided by subscriber count, showing what percentage of subscribers watch each video on average."
+                          data-tooltip-title="Engagement Rate"
+                        >
+                          <div className="flex items-center gap-2 mb-1">
+                            <div className="w-7 h-7 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-500">
+                              <Share2 size={14} />
+                            </div>
+                            <span className="text-xs text-gray-500">Engagement Rate</span>
+                          </div>
+                          <div className="font-semibold text-gray-900 text-sm">
+                            {subscriberCount && viewCount && videoCount ? 
+                              Math.round((parseInt(viewCount) / parseInt(videoCount)) / parseInt(subscriberCount) * 100) + '%' 
+                              : 'N/A'}
+                          </div>
+                        </div>
 
-                {/* Additional stats in horizontal layout */}
-                <div className="grid grid-cols-3 gap-3 mb-4">
-                  <div className="bg-gray-50 rounded-lg p-3 border border-gray-100 flex flex-col justify-center h-full shadow-md hover:shadow-lg transition-shadow duration-300 transform hover:-translate-y-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <div className="w-7 h-7 rounded-full bg-purple-50 flex items-center justify-center text-purple-500">
-                        <Calendar size={14} />
+                        {/* Duplicate the first row metrics for infinite scrolling */}
+                        {/* Subscribers (duplicate) */}
+                        <div 
+                          className="inline-block flex-shrink-0 bg-gray-50 rounded-lg p-3 border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-300 transform hover:-translate-y-1 relative min-w-[180px]"
+                          data-tooltip-id="subscribersDup"
+                          data-tooltip-content="The total number of subscribers to your channel. This is a key growth indicator and measures your channel's ability to build a loyal audience."
+                          data-tooltip-title="Subscribers"
+                        >
+                          <div className="flex items-center gap-2 mb-1">
+                            <div className="w-7 h-7 rounded-full bg-red-50 flex items-center justify-center text-red-500">
+                              <Users size={14} />
+                            </div>
+                            <span className="text-xs text-gray-500">Subscribers</span>
+                          </div>
+                          <div className="font-semibold text-gray-900 text-sm">
+                            {hiddenSubscriberCount ? 'Hidden' : (subscriberCount ? formatNumber(subscriberCount) : 'N/A')}
+                          </div>
+                        </div>
                       </div>
-                      <span className="text-xs text-gray-500">Created On</span>
                     </div>
-                    <div className="font-semibold text-gray-900 text-sm">
-                      {formattedPublishedAt}
-                    </div>
-                  </div>
-                  
-                  <div className="bg-gray-50 rounded-lg p-3 border border-gray-100 flex flex-col justify-center h-full shadow-md hover:shadow-lg transition-shadow duration-300 transform hover:-translate-y-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <div className="w-7 h-7 rounded-full bg-yellow-50 flex items-center justify-center text-yellow-500">
-                        <TrendingUp size={14} />
-                      </div>
-                      <span className="text-xs text-gray-500">Avg. Views per Video</span>
-                    </div>
-                    <div className="font-semibold text-gray-900 text-sm">
-                      {viewCount && videoCount ? formatNumber(Math.round(parseInt(viewCount) / parseInt(videoCount))) : 'N/A'}
-                    </div>
-                  </div>
+                    
+                    {/* Second row of marquee */}
+                    <div className="marquee-container overflow-hidden" data-tooltip-position="top">
+                      <div className="animate-marquee-pausable whitespace-nowrap flex flex-nowrap gap-3 py-1">
+                        {/* Second row - advanced metrics */}
+                        
+                        {/* Subscriber Conversion Rate */}
+                        {Object.keys(channelMetrics).length > 0 && (
+                          <div 
+                            className="inline-block flex-shrink-0 bg-gray-50 rounded-lg p-3 border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-300 transform hover:-translate-y-1 relative min-w-[180px]"
+                            data-tooltip-id="conversionRate"
+                            data-tooltip-content="Indicates how many subscribers you gain per 1,000 views. Higher values suggest your content is effective at converting viewers into long-term followers."
+                            data-tooltip-title="Subscriber Conversion Rate"
+                          >
+                            <div className="flex items-center gap-2 mb-1">
+                              <div className="w-7 h-7 rounded-full bg-pink-50 flex items-center justify-center text-pink-500">
+                                <Award size={14} />
+                              </div>
+                              <span className="text-xs text-gray-500">Sub. Conversion Rate</span>
+                            </div>
+                            <div className="font-semibold text-gray-900 text-sm">
+                              {channelMetrics.subscriberConversionRate.toFixed(2)} per 1K views
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Channel Activity Ratio */}
+                        {Object.keys(channelMetrics).length > 0 && (
+                          <div 
+                            className="inline-block flex-shrink-0 bg-gray-50 rounded-lg p-3 border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-300 transform hover:-translate-y-1 relative min-w-[180px]"
+                            data-tooltip-id="activityRatio"
+                            data-tooltip-content="Measures how frequently you post new content. Higher values indicate more consistent content creation, which typically correlates with channel growth."
+                            data-tooltip-title="Channel Activity Ratio"
+                          >
+                            <div className="flex items-center gap-2 mb-1">
+                              <div className="w-7 h-7 rounded-full bg-orange-50 flex items-center justify-center text-orange-500">
+                                <Activity size={14} />
+                              </div>
+                              <span className="text-xs text-gray-500">Activity Ratio</span>
+                            </div>
+                            <div className="font-semibold text-gray-900 text-sm">
+                              {channelMetrics.channelActivityRatio.toFixed(2)} videos/day
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Channel Efficiency Index */}
+                        {channelMetrics.channelEfficiencyIndex !== undefined && (
+                          <div 
+                            className="inline-block flex-shrink-0 bg-gray-50 rounded-lg p-3 border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-300 transform hover:-translate-y-1 relative min-w-[180px]"
+                            data-tooltip-id="efficiencyIndex"
+                            data-tooltip-content="Assesses how efficiently your channel converts content production into both views and engagement. Helps identify if quality or quantity is driving your channel's success."
+                            data-tooltip-title="Channel Efficiency Index"
+                          >
+                            <div className="flex items-center gap-2 mb-1">
+                              <div className="w-7 h-7 rounded-full bg-cyan-50 flex items-center justify-center text-cyan-500">
+                                <Gauge size={14} />
+                              </div>
+                              <span className="text-xs text-gray-500">Efficiency Index</span>
+                            </div>
+                            <div className="font-semibold text-gray-900 text-sm">
+                              {channelMetrics.channelEfficiencyIndex.toFixed(2)}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Audience Retention Strength */}
+                        {Object.keys(channelMetrics).length > 0 && (
+                          <div 
+                            className="inline-block flex-shrink-0 bg-gray-50 rounded-lg p-3 border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-300 transform hover:-translate-y-1 relative min-w-[180px]"
+                            data-tooltip-id="retentionStrength"
+                            data-tooltip-content="Measures how well your videos retain your subscriber base while accounting for content volume. Higher values indicate stronger audience loyalty."
+                            data-tooltip-title="Audience Retention Strength"
+                          >
+                            <div className="flex items-center gap-2 mb-1">
+                              <div className="w-7 h-7 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-500">
+                                <Repeat size={14} />
+                              </div>
+                              <span className="text-xs text-gray-500">Retention Strength</span>
+                            </div>
+                            <div className="font-semibold text-gray-900 text-sm">
+                              {channelMetrics.audienceRetentionStrength.toFixed(2)}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Channel Growth Momentum */}
+                        {Object.keys(channelMetrics).length > 0 && (
+                          <div 
+                            className="inline-block flex-shrink-0 bg-gray-50 rounded-lg p-3 border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-300 transform hover:-translate-y-1 relative min-w-[180px]"
+                            data-tooltip-id="growthMomentum"
+                            data-tooltip-content="Measures your channel's growth rate while accounting for content production. Higher values indicate faster growth relative to your channel's age and output."
+                            data-tooltip-title="Channel Growth Momentum"
+                          >
+                            <div className="flex items-center gap-2 mb-1">
+                              <div className="w-7 h-7 rounded-full bg-rose-50 flex items-center justify-center text-rose-500">
+                                <TrendingUpIcon size={14} />
+                              </div>
+                              <span className="text-xs text-gray-500">Growth Momentum</span>
+                            </div>
+                            <div className="font-semibold text-gray-900 text-sm">
+                              {formatNumber(channelMetrics.channelGrowthMomentum)}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Content-Subscriber Efficiency */}
+                        {Object.keys(channelMetrics).length > 0 && (
+                          <div 
+                            className="inline-block flex-shrink-0 bg-gray-50 rounded-lg p-3 border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-300 transform hover:-translate-y-1 relative min-w-[180px]"
+                            data-tooltip-id="subsPerVideo"
+                            data-tooltip-content="Shows how many subscribers you gain per video published. Higher values suggest each piece of content efficiently attracts new followers."
+                            data-tooltip-title="Content-Subscriber Efficiency"
+                          >
+                            <div className="flex items-center gap-2 mb-1">
+                              <div className="w-7 h-7 rounded-full bg-teal-50 flex items-center justify-center text-teal-500">
+                                <Layers size={14} />
+                              </div>
+                              <span className="text-xs text-gray-500">Subs per Video</span>
+                            </div>
+                            <div className="font-semibold text-gray-900 text-sm">
+                              {formatNumber(channelMetrics.contentSubscriberEfficiency)}
+                            </div>
+                          </div>
+                        )}
 
-                  <div className="bg-gray-50 rounded-lg p-3 border border-gray-100 flex flex-col justify-center h-full shadow-md hover:shadow-lg transition-shadow duration-300 transform hover:-translate-y-1 relative group">
-                    <div className="flex items-center gap-2 mb-1">
-                      <div className="w-7 h-7 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-500">
-                        <Share2 size={14} />
+                        {/* Subscriber Conversion Rate (duplicate) */}
+                        {Object.keys(channelMetrics).length > 0 && (
+                          <div 
+                            className="inline-block flex-shrink-0 bg-gray-50 rounded-lg p-3 border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-300 transform hover:-translate-y-1 relative min-w-[180px]"
+                            data-tooltip-id="conversionRateDup"
+                            data-tooltip-content="Indicates how many subscribers you gain per 1,000 views. Higher values suggest your content is effective at converting viewers into long-term followers."
+                            data-tooltip-title="Subscriber Conversion Rate"
+                          >
+                            <div className="flex items-center gap-2 mb-1">
+                              <div className="w-7 h-7 rounded-full bg-pink-50 flex items-center justify-center text-pink-500">
+                                <Award size={14} />
+                              </div>
+                              <span className="text-xs text-gray-500">Sub. Conversion Rate</span>
+                            </div>
+                            <div className="font-semibold text-gray-900 text-sm">
+                              {channelMetrics.subscriberConversionRate.toFixed(2)} per 1K views
+                            </div>
+                          </div>
+                        )}
                       </div>
-                      <span className="text-xs text-gray-500">Engagement Rate</span>
                     </div>
-                    <div className="font-semibold text-gray-900 text-sm">
-                      {subscriberCount && viewCount && videoCount ? 
-                        Math.round((parseInt(viewCount) / parseInt(videoCount)) / parseInt(subscriberCount) * 100) + '%' 
-                        : 'N/A'}
-                    </div>
-                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 bg-gray-50 text-gray-700 text-xs rounded-md p-3 shadow-xl drop-shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-300 z-50 pointer-events-none border border-gray-200">
-                      <p className="font-medium text-gray-800 mb-1">Engagement Rate</p>
-                      <p>Average views per video divided by subscriber count, showing what percentage of subscribers watch each video on average.</p>
-                    </div>
+                    
+                    {/* Tooltip Portal */}
+                    {tooltipState.active && (
+                      <div 
+                        ref={tooltipContainerRef}
+                        className="fixed bg-gray-50 text-gray-700 text-xs rounded-md p-3 shadow-xl z-[9999] pointer-events-none border border-gray-200 w-64 transition-opacity duration-100"
+                        style={{
+                          left: `${tooltipState.x}px`,
+                          top: tooltipState.isTop ? `${tooltipState.y - 10}px` : 'auto',
+                          bottom: !tooltipState.isTop ? `calc(100vh - ${tooltipState.y}px - 10px)` : 'auto',
+                          transform: 'translateX(-50%)',
+                          opacity: tooltipState.active ? 1 : 0
+                        }}
+                      >
+                        <p className="font-medium text-gray-800 mb-1">
+                          {tooltipState.title}
+                        </p>
+                        <p>
+                          {tooltipState.content}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
                 
@@ -517,4 +987,46 @@ export default function ChannelInfoPage() {
       </motion.div>
     </div>
   );
+}
+
+// Update the CSS for the marquee
+const styles = `
+  @keyframes marquee {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+  
+  .animate-marquee-pausable {
+    animation: marquee 40s linear infinite;
+    min-width: 200%;
+  }
+  
+  .animate-marquee-pausable:hover {
+    animation-play-state: paused;
+  }
+  
+  .marquee-container {
+    position: relative;
+  }
+  
+  .marquee-container:hover .animate-marquee-pausable {
+    animation-play-state: paused;
+  }
+  
+  /* Add this to ensure tooltips don't get stuck */
+  [data-tooltip-id] {
+    cursor: pointer;
+    transition: transform 0.2s ease;
+  }
+  
+  [data-tooltip-id]:hover {
+    z-index: 1;
+  }
+`;
+
+// Add the styles to the document
+if (typeof document !== 'undefined') {
+  const styleElement = document.createElement('style');
+  styleElement.innerHTML = styles;
+  document.head.appendChild(styleElement);
 }

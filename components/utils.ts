@@ -122,48 +122,6 @@ export function calculateAudienceRetentionStrength(channel: FormattedChannelInfo
   return (avgViewsPerVideo / channel.subscriberCount) * (1 + (channel.videoCount / 100));
 }
 
-// COMPARATIVE AND TRENDING METRICS
-export function calculateRecentPerformanceIndex(videos: FormattedVideoData[]): number {
-  // Sort videos by publish date, newest first
-  const sortedVideos = [...videos].sort((a, b) => 
-    new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
-  );
-  
-  // Get last 5 videos
-  const recentVideos = sortedVideos.slice(0, 5);
-  
-  // Calculate average engagement ratio for recent videos
-  const recentEngagementRatio = recentVideos.reduce((sum, video) => {
-    return sum + ((video.likeCount + video.commentCount) / video.viewCount);
-  }, 0) / recentVideos.length;
-  
-  // Calculate average engagement ratio for all videos
-  const overallEngagementRatio = videos.reduce((sum, video) => {
-    return sum + ((video.likeCount + video.commentCount) / video.viewCount);
-  }, 0) / videos.length;
-  
-  return recentEngagementRatio / overallEngagementRatio;
-}
-
-export function calculateTagPerformanceIndex(videos: FormattedVideoData[], targetTag: string): number {
-  // Filter videos that have the target tag
-  const videosWithTag = videos.filter(video => video.tags.includes(targetTag));
-  
-  if (videosWithTag.length === 0) return 0;
-  
-  // Calculate average engagement for videos with the tag
-  const tagEngagementRatio = videosWithTag.reduce((sum, video) => {
-    return sum + ((video.likeCount + video.commentCount) / video.viewCount);
-  }, 0) / videosWithTag.length;
-  
-  // Calculate overall average engagement
-  const overallEngagementRatio = videos.reduce((sum, video) => {
-    return sum + ((video.likeCount + video.commentCount) / video.viewCount);
-  }, 0) / videos.length;
-  
-  return tagEngagementRatio / overallEngagementRatio;
-}
-
 export function calculateChannelGrowthMomentum(channel: FormattedChannelInfo): number {
   const channelAgeInDays = (new Date().getTime() - new Date(channel.publishedAt).getTime()) / (1000 * 3600 * 24);
   return (channel.subscriberCount / channelAgeInDays) * (channel.videoCount / 10);

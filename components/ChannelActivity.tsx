@@ -2,9 +2,19 @@
 "use client"
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getActivities, getFormattedVideoData, getVideoComments } from '../services/youtubeApi';
-import { formatNumber, formatDateWithTime } from './utils';
-import { X, MessageCircle } from 'lucide-react';
+import { getActivities, getFormattedVideoData, getVideoComments, getChannelInfo } from '../services/youtubeApi';
+import { 
+  formatNumber, 
+  formatDateWithTime, 
+  calculateEngagementRatio, 
+  calculateEngagementDepthScore, 
+  calculateViewToSubRatio, 
+  calculateVideoEfficiencyIndex, 
+  calculateDailyEngagementDensity, 
+  calculateAudienceInteractionRatio 
+} from './utils';
+import { FormattedChannelInfo } from './types';
+import { X, MessageCircle, Info } from 'lucide-react';
 
 interface VideoData {
   id: string;
@@ -78,11 +88,42 @@ const ChannelActivity: React.FC<LatestVideosProps> = ({ channelId }) => {
   const [loadingComments, setLoadingComments] = useState<boolean>(false);
   const [showComments, setShowComments] = useState<boolean>(false);
   const [commentSortOrder, setCommentSortOrder] = useState<'time' | 'relevance'>('relevance');
+  const [channelInfo, setChannelInfo] = useState<FormattedChannelInfo | null>(null);
+  const [showTooltip, setShowTooltip] = useState<string | null>(null);
+
+  // Handle tooltip display
+  const handleTooltipToggle = (metricName: string | null) => {
+    setShowTooltip(metricName === showTooltip ? null : metricName);
+  };
+
+  // Tooltip content mapping
+  const tooltipContent = {
+    engagementRatio: "Measures the percentage of viewers who actively engaged with your content through likes or comments. Higher values indicate more engaging content that encourages viewer interaction.",
+    engagementDepthScore: "Weighted engagement metric that values comments (which require more effort) higher than likes. Helps identify content that drives meaningful audience interaction beyond passive watching.",
+    viewToSubRatio: "Shows what percentage of your subscribers watched this video. Values above 100% indicate the video reached beyond your subscriber base, suggesting good discoverability or shareability.",
+    videoEfficiencyIndex: "Compares this video's daily view rate to your channel's historical average. Values above 1.0 indicate this video performs better than your typical content.",
+    dailyEngagementDensity: "Measures how much engagement your video generates per day since publication. Useful for comparing videos of different ages on an equal basis.",
+    audienceInteractionRatio: "Shows how many interactions you get per 1,000 subscribers. Helps you understand if your existing audience is actively engaging with specific content."
+  };
+
+  // Fix tooltip z-index to ensure they appear above other elements
+  const tooltipStyles = {
+    position: 'relative',
+    zIndex: 30,
+  } as React.CSSProperties;
 
   useEffect(() => {
     const fetchVideos = async () => {
       try {
         setLoading(true);
+        
+        // Fetch channel info for analytics metrics
+        try {
+          const channelData = await getChannelInfo(channelId);
+          setChannelInfo(channelData);
+        } catch (err) {
+          console.error('Error fetching channel info:', err);
+        }
         
         // Step 1: Get the latest 15 activities (uploads)
         const activities = await getActivities(channelId, 15);
@@ -294,62 +335,242 @@ const ChannelActivity: React.FC<LatestVideosProps> = ({ channelId }) => {
                   />
                 </div>
 
+                {/* Analytics Metrics - New Component */}
+                {channelInfo && (
+                  <div className="mb-6">
+                    <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-xl border border-blue-100 shadow-sm hover:shadow-md transition-all duration-300">
+                      <h4 className="text-lg font-semibold mb-4 text-gray-800 flex items-center">
+                        <span className="bg-blue-100 text-blue-700 p-1 mr-2 rounded">📊</span>
+                        YouTube Analytics Metrics
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="bg-white p-3 rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300">
+                          <div className="flex justify-between items-center">
+                            <h5 className="text-sm font-medium text-gray-700">Engagement Ratio</h5>
+                            <button 
+                              onClick={() => handleTooltipToggle('engagementRatio')}
+                              className="text-gray-400 hover:text-blue-500 transition-colors"
+                            >
+                              <Info size={16} />
+                            </button>
+                          </div>
+                          <p className="text-2xl font-bold text-blue-600 mt-1">
+                            {calculateEngagementRatio(selectedVideo).toFixed(2)}%
+                          </p>
+                          {showTooltip === 'engagementRatio' && (
+                            <div className="mt-2 p-2 bg-gray-50 rounded-md text-xs text-gray-600 border-l-2 border-blue-400" style={tooltipStyles}>
+                              {tooltipContent.engagementRatio}
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div className="bg-white p-3 rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300">
+                          <div className="flex justify-between items-center">
+                            <h5 className="text-sm font-medium text-gray-700">Engagement Depth Score</h5>
+                            <button 
+                              onClick={() => handleTooltipToggle('engagementDepthScore')}
+                              className="text-gray-400 hover:text-blue-500 transition-colors"
+                            >
+                              <Info size={16} />
+                            </button>
+                          </div>
+                          <p className="text-2xl font-bold text-blue-600 mt-1">
+                            {calculateEngagementDepthScore(selectedVideo).toFixed(2)}%
+                          </p>
+                          {showTooltip === 'engagementDepthScore' && (
+                            <div className="mt-2 p-2 bg-gray-50 rounded-md text-xs text-gray-600 border-l-2 border-blue-400" style={tooltipStyles}>
+                              {tooltipContent.engagementDepthScore}
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div className="bg-white p-3 rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300">
+                          <div className="flex justify-between items-center">
+                            <h5 className="text-sm font-medium text-gray-700">View-to-Subscriber Ratio</h5>
+                            <button 
+                              onClick={() => handleTooltipToggle('viewToSubRatio')}
+                              className="text-gray-400 hover:text-blue-500 transition-colors"
+                            >
+                              <Info size={16} />
+                            </button>
+                          </div>
+                          <p className="text-2xl font-bold text-blue-600 mt-1">
+                            {calculateViewToSubRatio(selectedVideo, channelInfo).toFixed(2)}%
+                          </p>
+                          {showTooltip === 'viewToSubRatio' && (
+                            <div className="mt-2 p-2 bg-gray-50 rounded-md text-xs text-gray-600 border-l-2 border-blue-400" style={tooltipStyles}>
+                              {tooltipContent.viewToSubRatio}
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div className="bg-white p-3 rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300">
+                          <div className="flex justify-between items-center">
+                            <h5 className="text-sm font-medium text-gray-700">Video Efficiency Index</h5>
+                            <button 
+                              onClick={() => handleTooltipToggle('videoEfficiencyIndex')}
+                              className="text-gray-400 hover:text-blue-500 transition-colors"
+                            >
+                              <Info size={16} />
+                            </button>
+                          </div>
+                          <p className="text-2xl font-bold text-blue-600 mt-1">
+                            {calculateVideoEfficiencyIndex(selectedVideo, channelInfo).toFixed(2)}
+                          </p>
+                          {showTooltip === 'videoEfficiencyIndex' && (
+                            <div className="mt-2 p-2 bg-gray-50 rounded-md text-xs text-gray-600 border-l-2 border-blue-400" style={tooltipStyles}>
+                              {tooltipContent.videoEfficiencyIndex}
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div className="bg-white p-3 rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300">
+                          <div className="flex justify-between items-center">
+                            <h5 className="text-sm font-medium text-gray-700">Daily Engagement Density</h5>
+                            <button 
+                              onClick={() => handleTooltipToggle('dailyEngagementDensity')}
+                              className="text-gray-400 hover:text-blue-500 transition-colors"
+                            >
+                              <Info size={16} />
+                            </button>
+                          </div>
+                          <p className="text-2xl font-bold text-blue-600 mt-1">
+                            {formatNumber(calculateDailyEngagementDensity(selectedVideo))}
+                          </p>
+                          {showTooltip === 'dailyEngagementDensity' && (
+                            <div className="mt-2 p-2 bg-gray-50 rounded-md text-xs text-gray-600 border-l-2 border-blue-400" style={tooltipStyles}>
+                              {tooltipContent.dailyEngagementDensity}
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div className="bg-white p-3 rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300">
+                          <div className="flex justify-between items-center">
+                            <h5 className="text-sm font-medium text-gray-700">Audience Interaction Ratio</h5>
+                            <button 
+                              onClick={() => handleTooltipToggle('audienceInteractionRatio')}
+                              className="text-gray-400 hover:text-blue-500 transition-colors"
+                            >
+                              <Info size={16} />
+                            </button>
+                          </div>
+                          <p className="text-2xl font-bold text-blue-600 mt-1">
+                            {calculateAudienceInteractionRatio(selectedVideo, channelInfo).toFixed(2)}
+                          </p>
+                          {showTooltip === 'audienceInteractionRatio' && (
+                            <div className="mt-2 p-2 bg-gray-50 rounded-md text-xs text-gray-600 border-l-2 border-blue-400" style={tooltipStyles}>
+                              {tooltipContent.audienceInteractionRatio}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Video Stats */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                  <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300">
-                    <h4 className="text-lg font-semibold mb-2 text-gray-800">Video Statistics</h4>
-                    <ul className="space-y-2 text-gray-700">
-                      <li><span className="font-medium">Published:</span> {formatDateWithTime(selectedVideo.publishedAt)}</li>
-                      <li><span className="font-medium">Views:</span> {formatNumber(selectedVideo.viewCount)}</li>
-                      <li><span className="font-medium">Likes:</span> {formatNumber(selectedVideo.likeCount)}</li>
-                      <li><span className="font-medium">Comments:</span> {formatNumber(selectedVideo.commentCount)}</li>
-                      <li><span className="font-medium">Favorites:</span> {formatNumber(selectedVideo.favoriteCount)}</li>
-                      <li><span className="font-medium">Category ID:</span> {selectedVideo.categoryId}</li>
-                      <li><span className="font-medium">Sponsored Content:</span> {selectedVideo.hasPaidProductPlacement ? 'Yes' : 'No'}</li>
+                  <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-xl border border-blue-100 shadow-sm hover:shadow-md transition-all duration-300">
+                    <h4 className="text-lg font-semibold mb-4 text-gray-800 flex items-center">
+                      <span className="bg-blue-100 text-blue-700 p-1 mr-2 rounded">📈</span>
+                      Video Statistics
+                    </h4>
+                    <ul className="space-y-3 text-gray-700">
+                      <li className="flex justify-between items-center bg-white p-2 rounded-lg border border-gray-100">
+                        <span className="font-medium text-gray-600">Published:</span> 
+                        <span className="text-gray-800">{formatDateWithTime(selectedVideo.publishedAt)}</span>
+                      </li>
+                      <li className="flex justify-between items-center bg-white p-2 rounded-lg border border-gray-100">
+                        <span className="font-medium text-gray-600">Views:</span> 
+                        <span className="text-blue-600 font-bold">{formatNumber(selectedVideo.viewCount)}</span>
+                      </li>
+                      <li className="flex justify-between items-center bg-white p-2 rounded-lg border border-gray-100">
+                        <span className="font-medium text-gray-600">Likes:</span> 
+                        <span className="text-blue-600 font-bold">{formatNumber(selectedVideo.likeCount)}</span>
+                      </li>
+                      <li className="flex justify-between items-center bg-white p-2 rounded-lg border border-gray-100">
+                        <span className="font-medium text-gray-600">Comments:</span> 
+                        <span className="text-blue-600 font-bold">{formatNumber(selectedVideo.commentCount)}</span>
+                      </li>
+                      <li className="flex justify-between items-center bg-white p-2 rounded-lg border border-gray-100">
+                        <span className="font-medium text-gray-600">Favorites:</span> 
+                        <span className="text-blue-600 font-bold">{formatNumber(selectedVideo.favoriteCount)}</span>
+                      </li>
+                      <li className="flex justify-between items-center bg-white p-2 rounded-lg border border-gray-100">
+                        <span className="font-medium text-gray-600">Category ID:</span> 
+                        <span className="bg-gray-100 px-2 py-1 rounded-md text-gray-700">{selectedVideo.categoryId}</span>
+                      </li>
+                      <li className="flex justify-between items-center bg-white p-2 rounded-lg border border-gray-100">
+                        <span className="font-medium text-gray-600">Sponsored Content:</span> 
+                        <span className={`px-2 py-1 rounded-md ${selectedVideo.hasPaidProductPlacement ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                          {selectedVideo.hasPaidProductPlacement ? 'Yes' : 'No'}
+                        </span>
+                      </li>
                     </ul>
                   </div>
 
-                  <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300">
-                    <h4 className="text-lg font-semibold mb-2 text-gray-800">Topic Categories</h4>
+                  <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-xl border border-blue-100 shadow-sm hover:shadow-md transition-all duration-300">
+                    <h4 className="text-lg font-semibold mb-4 text-gray-800 flex items-center">
+                      <span className="bg-blue-100 text-blue-700 p-1 mr-2 rounded">🏷️</span>
+                      Topic Categories
+                    </h4>
                     {selectedVideo.topicCategories.length > 0 ? (
-                      <ul className="space-y-1 text-gray-700 break-words">
-                        {selectedVideo.topicCategories.map((topic, index) => (
-                          <li key={index} className="break-words text-sm">
-                            {topic}
-                          </li>
-                        ))}
-                      </ul>
+                      <div className="bg-white p-3 rounded-lg border border-gray-100 shadow-sm">
+                        <ul className="space-y-2 text-gray-700 break-words">
+                          {selectedVideo.topicCategories.map((topic, index) => (
+                            <li key={index} className="break-words text-sm bg-gray-50 p-2 rounded-md border-l-2 border-blue-300">
+                              {topic}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
                     ) : (
-                      <p className="text-gray-600">No topic categories available</p>
+                      <div className="bg-white p-4 rounded-lg border border-gray-100 text-center shadow-sm">
+                        <p className="text-gray-600">No topic categories available</p>
+                      </div>
                     )}
                   </div>
                 </div>
 
                 {/* Video Description */}
                 <div className="mb-6">
-                  <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300">
-                    <h4 className="text-lg font-semibold mb-2 text-gray-800">Description</h4>
-                    <p className="text-gray-700 whitespace-pre-line">{selectedVideo.description}</p>
+                  <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-xl border border-blue-100 shadow-sm hover:shadow-md transition-all duration-300">
+                    <h4 className="text-lg font-semibold mb-4 text-gray-800 flex items-center">
+                      <span className="bg-blue-100 text-blue-700 p-1 mr-2 rounded">📝</span>
+                      Description
+                    </h4>
+                    <div className="bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
+                      <p className="text-gray-700 whitespace-pre-line">{selectedVideo.description}</p>
+                    </div>
                   </div>
                 </div>
 
                 {/* Tags */}
                 <div className="mb-6">
-                  <h4 className="text-lg font-semibold mb-2 text-gray-800">Tags ({selectedVideo.tags.length})</h4>
-                  {selectedVideo.tags.length > 0 ? (
-                    <div className="flex flex-wrap gap-2">
-                      {selectedVideo.tags.map((tag, index) => (
-                        <span 
-                          key={index} 
-                          className="bg-blue-100 text-blue-800 text-xs px-3 py-1 rounded-full shadow-sm hover:shadow transition-all duration-200"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-gray-600">No tags available</p>
-                  )}
+                  <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-xl border border-blue-100 shadow-sm hover:shadow-md transition-all duration-300">
+                    <h4 className="text-lg font-semibold mb-4 text-gray-800 flex items-center">
+                      <span className="bg-blue-100 text-blue-700 p-1 mr-2 rounded">#️⃣</span>
+                      Tags ({selectedVideo.tags.length})
+                    </h4>
+                    {selectedVideo.tags.length > 0 ? (
+                      <div className="bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
+                        <div className="flex flex-wrap gap-2">
+                          {selectedVideo.tags.map((tag, index) => (
+                            <span 
+                              key={index} 
+                              className="bg-blue-100 text-blue-800 text-xs px-3 py-1 rounded-full shadow-sm hover:shadow transition-all duration-200"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bg-white p-4 rounded-lg border border-gray-100 text-center shadow-sm">
+                        <p className="text-gray-600">No tags available</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 
                 {/* Action Button */}
@@ -358,13 +579,13 @@ const ChannelActivity: React.FC<LatestVideosProps> = ({ channelId }) => {
                     onClick={handleViewComments}
                     className={`flex items-center justify-center w-full gap-2 p-3 rounded-lg transition-all duration-300 ${
                       showComments 
-                        ? 'bg-blue-600 text-white shadow-md' 
-                        : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+                        ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md' 
+                        : 'bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 hover:from-blue-100 hover:to-indigo-100'
                     }`}
                   >
                     <MessageCircle size={18} />
                     <span>{showComments ? "Hide Comments" : "View Comments"}</span>
-                    <span className="bg-white/20 px-2 py-0.5 rounded-full text-xs">
+                    <span className={`${showComments ? 'bg-white/20' : 'bg-blue-200'} px-2 py-0.5 rounded-full text-xs`}>
                       {formatNumber(selectedVideo.commentCount)}
                     </span>
                   </button>
@@ -372,100 +593,98 @@ const ChannelActivity: React.FC<LatestVideosProps> = ({ channelId }) => {
                 
                 {/* Comments Section */}
                 {showComments && (
-                  <div className="mb-6 bg-white rounded-xl p-5 shadow-sm">
-                    <div className="flex items-center justify-between mb-4">
-                      <h4 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                        <span className="w-7 h-7 rounded-full bg-blue-50 flex items-center justify-center text-blue-500">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                          </svg>
-                        </span>
-                        Comments
-                      </h4>
-                      <div className="flex gap-2">
-                        <button 
-                          onClick={() => handleSortOrderChange('relevance')}
-                          className={`px-3 py-1 text-sm rounded-full transition-all duration-200 ${
-                            commentSortOrder === 'relevance' 
-                              ? 'bg-blue-600 text-white shadow-md' 
-                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                          }`}
-                        >
-                          Relevance
-                        </button>
-                        <button 
-                          onClick={() => handleSortOrderChange('time')}
-                          className={`px-3 py-1 text-sm rounded-full transition-all duration-200 ${
-                            commentSortOrder === 'time' 
-                              ? 'bg-blue-600 text-white shadow-md' 
-                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                          }`}
-                        >
-                          Newest
-                        </button>
-                      </div>
-                    </div>
-                    
-                    {loadingComments ? (
-                      <div className="flex justify-center py-10">
-                        <div className="animate-pulse flex space-x-2">
-                          <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                          <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                          <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                  <div className="mb-6">
+                    <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-xl border border-blue-100 shadow-sm">
+                      <div className="flex items-center justify-between mb-4">
+                        <h4 className="text-lg font-semibold text-gray-800 flex items-center">
+                          <span className="bg-blue-100 text-blue-700 p-1 mr-2 rounded">💬</span>
+                          Comments
+                        </h4>
+                        <div className="flex gap-2">
+                          <button 
+                            onClick={() => handleSortOrderChange('relevance')}
+                            className={`px-3 py-1 text-sm rounded-full transition-all duration-200 ${
+                              commentSortOrder === 'relevance' 
+                                ? 'bg-blue-600 text-white shadow-md' 
+                                : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
+                            }`}
+                          >
+                            Relevance
+                          </button>
+                          <button 
+                            onClick={() => handleSortOrderChange('time')}
+                            className={`px-3 py-1 text-sm rounded-full transition-all duration-200 ${
+                              commentSortOrder === 'time' 
+                                ? 'bg-blue-600 text-white shadow-md' 
+                                : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
+                            }`}
+                          >
+                            Newest
+                          </button>
                         </div>
                       </div>
-                    ) : comments.length > 0 ? (
-                      <div className="space-y-4 max-h-[400px] overflow-y-auto px-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-400">
-                        {comments.map(comment => (
-                          <div key={comment.id} className="bg-gray-50 p-4 rounded-lg border border-gray-100 shadow-md hover:shadow-lg transition-shadow duration-300 transform hover:-translate-y-1">
-                            <div className="flex justify-between mb-2">
-                              <span className="font-medium text-blue-700 flex items-center gap-1">
-                                <span className="w-5 h-5 rounded-full bg-blue-50 flex items-center justify-center text-blue-500">
-                                  <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                                    <circle cx="12" cy="7" r="4"></circle>
-                                  </svg>
-                                </span>
-                                {comment.authorName}
-                              </span>
-                              <span className="text-xs text-gray-500 flex items-center gap-1">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <circle cx="12" cy="12" r="10"></circle>
-                                  <polyline points="12 6 12 12 16 14"></polyline>
-                                </svg>
-                                {formatDateWithTime(comment.publishedAt)}
-                              </span>
-                            </div>
-                            <p className="text-gray-700 text-sm" dangerouslySetInnerHTML={{ __html: comment.text }}></p>
-                            <div className="flex justify-between mt-2 text-xs text-gray-500">
-                              <span className="flex items-center gap-1">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"></path>
-                                  <path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path>
-                                </svg>
-                                {comment.likeCount} likes
-                              </span>
-                              {comment.replyCount > 0 && (
-                                <span className="flex items-center gap-1">
-                                  <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <polyline points="15 10 20 15 15 20"></polyline>
-                                    <path d="M4 4v7a4 4 0 0 0 4 4h12"></path>
-                                  </svg>
-                                  {comment.replyCount} replies
-                                </span>
-                              )}
-                            </div>
+                      
+                      {loadingComments ? (
+                        <div className="flex justify-center py-10 bg-white rounded-lg">
+                          <div className="animate-pulse flex space-x-2">
+                            <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                            <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                            <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
                           </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-10 text-gray-500 bg-gray-50 rounded-lg border border-gray-100">
-                        <svg className="mx-auto h-12 w-12 text-gray-400 mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                        </svg>
-                        No comments found for this video.
-                      </div>
-                    )}
+                        </div>
+                      ) : comments.length > 0 ? (
+                        <div className="space-y-4 max-h-[400px] overflow-y-auto bg-white p-4 rounded-lg border border-gray-100 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-400">
+                          {comments.map(comment => (
+                            <div key={comment.id} className="bg-gray-50 p-4 rounded-lg border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 transform hover:-translate-y-1">
+                              <div className="flex justify-between mb-2">
+                                <span className="font-medium text-blue-700 flex items-center gap-1">
+                                  <span className="w-5 h-5 rounded-full bg-blue-50 flex items-center justify-center text-blue-500">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                      <circle cx="12" cy="7" r="4"></circle>
+                                    </svg>
+                                  </span>
+                                  {comment.authorName}
+                                </span>
+                                <span className="text-xs text-gray-500 flex items-center gap-1">
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <polyline points="12 6 12 12 16 14"></polyline>
+                                  </svg>
+                                  {formatDateWithTime(comment.publishedAt)}
+                                </span>
+                              </div>
+                              <p className="text-gray-700 text-sm" dangerouslySetInnerHTML={{ __html: comment.text }}></p>
+                              <div className="flex justify-between mt-2 text-xs text-gray-500">
+                                <span className="flex items-center gap-1 bg-gray-100 px-2 py-1 rounded-full">
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"></path>
+                                    <path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path>
+                                  </svg>
+                                  {formatNumber(comment.likeCount)} likes
+                                </span>
+                                {comment.replyCount > 0 && (
+                                  <span className="flex items-center gap-1 bg-gray-100 px-2 py-1 rounded-full">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                      <polyline points="15 10 20 15 15 20"></polyline>
+                                      <path d="M4 4v7a4 4 0 0 0 4 4h12"></path>
+                                    </svg>
+                                    {formatNumber(comment.replyCount)} replies
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-10 text-gray-500 bg-white rounded-lg border border-gray-100">
+                          <svg className="mx-auto h-12 w-12 text-gray-400 mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                          </svg>
+                          No comments found for this video.
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
