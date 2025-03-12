@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getActivities, getFormattedVideoData, getVideoComments } from '../services/youtubeApi';
-import { formatNumber } from './utils';
+import { formatNumber, formatDateWithTime } from './utils';
 import { X, MessageCircle } from 'lucide-react';
 
 interface VideoData {
@@ -125,18 +125,6 @@ const ChannelActivity: React.FC<LatestVideosProps> = ({ channelId }) => {
 
     fetchVideos();
   }, [channelId]);
-
-  // Format date to more readable form
-  const formatDate = (isoDate: string) => {
-    const date = new Date(isoDate);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
 
   const openVideoDialog = (video: VideoData) => {
     setSelectedVideo(video);
@@ -311,7 +299,7 @@ const ChannelActivity: React.FC<LatestVideosProps> = ({ channelId }) => {
                   <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300">
                     <h4 className="text-lg font-semibold mb-2 text-gray-800">Video Statistics</h4>
                     <ul className="space-y-2 text-gray-700">
-                      <li><span className="font-medium">Published:</span> {formatDate(selectedVideo.publishedAt)}</li>
+                      <li><span className="font-medium">Published:</span> {formatDateWithTime(selectedVideo.publishedAt)}</li>
                       <li><span className="font-medium">Views:</span> {formatNumber(selectedVideo.viewCount)}</li>
                       <li><span className="font-medium">Likes:</span> {formatNumber(selectedVideo.likeCount)}</li>
                       <li><span className="font-medium">Comments:</span> {formatNumber(selectedVideo.commentCount)}</li>
@@ -445,7 +433,7 @@ const ChannelActivity: React.FC<LatestVideosProps> = ({ channelId }) => {
                                   <circle cx="12" cy="12" r="10"></circle>
                                   <polyline points="12 6 12 12 16 14"></polyline>
                                 </svg>
-                                {formatDate(comment.publishedAt)}
+                                {formatDateWithTime(comment.publishedAt)}
                               </span>
                             </div>
                             <p className="text-gray-700 text-sm" dangerouslySetInnerHTML={{ __html: comment.text }}></p>

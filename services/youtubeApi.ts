@@ -1,5 +1,7 @@
 // YouTubeAPI.ts
 
+import { formatDateLong } from '../components/utils';
+
 // Base URL for YouTube API
 const API_BASE_URL = 'https://www.googleapis.com/youtube/v3';
 
@@ -418,13 +420,8 @@ export async function getChannelInfo(channelId: string): Promise<FormattedChanne
   
   const channel = response.items[0];
   
-  // Convert ISO date to human-readable format
-  const date = new Date(channel.snippet.publishedAt);
-  const formattedDate = date.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  });
+  // Convert ISO date to human-readable format using utility function
+  const formattedDate = formatDateLong(channel.snippet.publishedAt);
   
   return {
     publishedAt: formattedDate,

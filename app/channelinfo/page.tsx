@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getChannelDetails, getFeaturedChannels } from '@/services/youtubeApi';
 import { Users, Eye, Video, Loader2, BarChart2, TrendingUp, Users as UsersIcon, MessageCircle, ListVideo, Calendar, MessageSquare, Share2, Zap, X, ExternalLink } from 'lucide-react';
-import { formatNumber } from '@/components/utils';
+import { formatNumber, formatDateLong } from '@/components/utils';
 import ChannelActivity from '@/components/ChannelActivity';
 
 // Dashboard type definition
@@ -215,11 +215,7 @@ export default function ChannelInfoPage() {
   
   // Extract additional requested data
   const publishedAt = channelData.snippet?.publishedAt;
-  const formattedPublishedAt = publishedAt ? new Date(publishedAt).toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  }) : 'N/A';
+  const formattedPublishedAt = publishedAt ? formatDateLong(publishedAt) : 'N/A';
   
   const commentCount = channelData.statistics?.commentCount;
   const hiddenSubscriberCount = channelData.statistics?.hiddenSubscriberCount;
