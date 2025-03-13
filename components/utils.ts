@@ -115,6 +115,7 @@ export function calculateChannelGrowthMomentum(channel: FormattedChannelInfo): n
 export function calculateContentSubscriberEfficiency(channel: FormattedChannelInfo): number {
   return channel.subscriberCount / channel.videoCount;
 }
+
 export function limitWords(text: string, wordCount: number): string {
   if (!text) return '';
   const words = text.split(/\s+/);
@@ -227,4 +228,122 @@ export function updateTooltipData(element: HTMLElement | null): Partial<TooltipS
     x: centerX,
     y: y
   };
+}
+
+/**
+ * Calculate a channel rating from A+ to D- based on channel metrics
+ */
+export function calculateChannelRating(metrics: {
+  subscriberConversionRate?: number;
+  channelActivityRatio?: number;
+  audienceRetentionStrength?: number;
+  channelGrowthMomentum?: number;
+  contentSubscriberEfficiency?: number;
+  channelEfficiencyIndex?: number;
+}): {
+  rating: string;
+  color: string;
+  description: string;
+} {
+  // Define weights for each metric
+  const weights = {
+    subscriberConversionRate: 0.2,
+    channelActivityRatio: 0.15,
+    audienceRetentionStrength: 0.2,
+    channelGrowthMomentum: 0.25,
+    contentSubscriberEfficiency: 0.1,
+    channelEfficiencyIndex: 0.1
+  };
+
+  // Normalize each metric to a score between 0 and 1
+  // Higher values are better for all these metrics
+  let totalScore = 0;
+  let weightSum = 0;
+
+  // Only consider metrics that are defined
+  Object.entries(metrics).forEach(([key, value]) => {
+    if (value !== undefined && !isNaN(value)) {
+      const weight = weights[key as keyof typeof weights] || 0;
+      
+      // Normalize the value (this is simplified - you might want to adjust thresholds)
+      // For each metric type, we need different normalization approaches
+      let normalizedValue = 0;
+      
+      switch(key) {
+        case 'subscriberConversionRate':
+          // Typically ranges from 0 to 10
+          normalizedValue = Math.min(value / 10, 1);
+          break;
+        case 'channelActivityRatio':
+          // Higher activity ratio is better, typically 0 to 1
+          normalizedValue = Math.min(value / 1, 1);
+          break;
+        case 'audienceRetentionStrength':
+          // Typically 0 to 5
+          normalizedValue = Math.min(value / 5, 1);
+          break;
+        case 'channelGrowthMomentum':
+          // Can be quite variable
+          normalizedValue = Math.min(value / 100, 1);
+          break;
+        case 'contentSubscriberEfficiency':
+          // Typically 0 to 10000
+          normalizedValue = Math.min(value / 10000, 1);
+          break;
+        case 'channelEfficiencyIndex':
+          // Typically 0 to 1
+          normalizedValue = Math.min(value, 1);
+          break;
+        default:
+          normalizedValue = 0;
+      }
+      
+      totalScore += normalizedValue * weight;
+      weightSum += weight;
+    }
+  });
+
+  // Calculate final score (0 to 1)
+  const finalScore = weightSum > 0 ? totalScore / weightSum : 0;
+  
+  // Map to letter grades - 8 grades from A+ to D-
+  let rating = '';
+  let color = '';
+  let description = '';
+
+  if (finalScore >= 0.90) {
+    rating = 'A+';
+    color = '#22c55e'; // Green-600
+    description = 'Outstanding channel with exceptional metrics';
+  } else if (finalScore >= 0.80) {
+    rating = 'A';
+    color = '#4ade80'; // Green-400
+    description = 'Excellent channel performance';
+  } else if (finalScore >= 0.70) {
+    rating = 'B+';
+    color = '#fbbf24'; // Yellow-400
+    description = 'Very good channel with strong metrics';
+  } else if (finalScore >= 0.60) {
+    rating = 'B';
+    color = '#fcd34d'; // Yellow-300
+    description = 'Good channel performance';
+  } else if (finalScore >= 0.50) {
+    rating = 'C+';
+    color = '#fb923c'; // Orange-400
+    description = 'Above average channel metrics';
+  } else if (finalScore >= 0.40) {
+    rating = 'C';
+    color = '#f97316'; // Orange-500
+    description = 'Average channel performance';
+  } else if (finalScore >= 0.30) {
+    rating = 'D+';
+    color = '#ef4444'; // Red-500
+    description = 'Below average performance';
+  } else {
+    rating = 'D-';
+    color = '#dc2626'; // Red-600
+    description = 'Channel needs significant improvement';
+  }
+
+  return { rating, color, description };
 }

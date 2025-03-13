@@ -17,6 +17,7 @@ import {
   calculateAudienceRetentionStrength,
   calculateChannelGrowthMomentum,
   calculateContentSubscriberEfficiency,
+  calculateChannelRating,
   limitWords,
   fadeIn,
   stagger,
@@ -502,6 +503,25 @@ export default function ChannelInfoPage() {
                     ) : (
                       <div className="w-full aspect-square bg-gray-100 flex items-center justify-center text-gray-400 rounded">
                         <Users size={32} />
+                      </div>
+                    )}
+                    
+                    {/* Channel Rating Badge */}
+                    {channelMetrics && Object.keys(channelMetrics).length > 0 && (
+                      <div 
+                        className="absolute -top-1 -right-1 w-12 h-12 flex items-center justify-center z-10 cursor-pointer"
+                        data-tooltip-id="channelRating"
+                        data-tooltip-content={`${calculateChannelRating(channelMetrics).description}. This rating is based on multiple channel metrics including subscriber conversion, audience retention, growth momentum, and content efficiency.`}
+                        data-tooltip-title="Channel Performance Rating"
+                      >
+                        <div
+                          className="w-full h-full rounded-lg flex items-center justify-center shadow-lg border-2 border-white font-bold text-base transition-transform hover:scale-105"
+                          style={{ 
+                            backgroundColor: calculateChannelRating(channelMetrics).color,
+                          }}
+                        >
+                          <span className="text-white">{calculateChannelRating(channelMetrics).rating}</span>
+                        </div>
                       </div>
                     )}
                   </div>
