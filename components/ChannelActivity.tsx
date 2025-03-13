@@ -124,7 +124,7 @@ const ChannelActivity: React.FC<LatestVideosProps> = ({ channelId }) => {
         }
         
         // Step 1: Get the latest 15 activities (uploads)
-        const activities = await getActivities(channelId, 15);
+        const activities = await getActivities(channelId, 20);
         
         // Step 2: Extract video IDs from activities
         const videoIds = activities

@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion, AnimatePresence, Variant, Variants } from "framer-motion";
-import { Bell, Settings, HelpCircle, TrendingUp, BarChart2, Users, Search, ArrowRight, Youtube } from "lucide-react";
+import { motion, AnimatePresence, Variants } from "framer-motion";
+import { Bell, Settings, HelpCircle, TrendingUp, BarChart2, Users, ArrowRight, Youtube } from "lucide-react";
 import ChannelSearch from '@/components/ChannelSearch';
 
 // Enhanced animation variants with proper types

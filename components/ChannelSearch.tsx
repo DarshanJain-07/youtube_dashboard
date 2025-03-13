@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Loader2, X, ArrowRight, ThumbsUp } from 'lucide-react';
+import { Search, Loader2, X, ArrowRight } from 'lucide-react';
 import { searchChannels } from '@/services/youtubeApi';
 
 interface ChannelSearchProps {

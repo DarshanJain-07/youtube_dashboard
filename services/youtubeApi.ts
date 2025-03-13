@@ -240,6 +240,7 @@ export interface VideosResponse extends YouTubeApiResponse {
 
 export interface FormattedVideoData {
   id: string;
+  title: string;
   publishedAt: string;
   description: string;
   tags: string[];
@@ -509,6 +510,7 @@ export async function getFormattedVideoData(videoIds: string | string[]): Promis
   
   return response.items.map(item => ({
     id: item.id,
+    title: item.snippet.title,
     publishedAt: item.snippet.publishedAt,
     description: item.snippet.description,
     tags: item.snippet.tags || [],

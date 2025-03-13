@@ -3,11 +3,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { getChannelDetails, getFeaturedChannels, getFormattedVideoData } from '@/services/youtubeApi';
+import { getChannelDetails, getFeaturedChannels, getFormattedVideoData, getChannelVideos } from '@/services/youtubeApi';
 import { 
   Users, Eye, Video, Loader2, TrendingUp, 
   Users as UsersIcon, Calendar, Share2, ExternalLink, 
-  Award, Activity, Gauge, Repeat, TrendingUp as TrendingUpIcon, Layers
+  Award, Activity, Gauge, Repeat, TrendingUp as TrendingUpIcon, Layers, ArrowUpRight, Clock, Filter, Search, BarChart4
 } from 'lucide-react';
 import { 
   formatNumber, formatDateLong, 
@@ -21,12 +21,12 @@ import {
   fadeIn,
   stagger,
   fadeInRight,
-  marqueeStyles,
   addMarqueeStylesToDocument,
   updateTooltipData
 } from '@/components/utils';
-import { AnimationVariant, DashboardType, ChannelMetrics, TooltipState } from '@/components/types';
+import { DashboardType, ChannelMetrics, TooltipState } from '@/components/types';
 import ChannelActivity from '@/components/ChannelActivity';
+import ChannelGraphs from '@/components/ChannelGraphs';
 
 // Dashboard components - replace with your actual components
 const LatestVideos = () => {
@@ -64,12 +64,12 @@ export default function ChannelInfoPage() {
   const [channelData, setChannelData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedDashboard, setSelectedDashboard] = useState<DashboardType>('latestvideos');
   const [otherChannels, setOtherChannels] = useState<any[]>([]);
   const [loadingOtherChannels, setLoadingOtherChannels] = useState(false);
   const [channelMetrics, setChannelMetrics] = useState<ChannelMetrics>({} as ChannelMetrics);
   const [videoData, setVideoData] = useState<any[]>([]);
   const [topTags, setTopTags] = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState<string>('videos');
   
   // Enhanced tooltip state
   const [tooltipState, setTooltipState] = useState<TooltipState>({
@@ -174,107 +174,129 @@ export default function ChannelInfoPage() {
           
           // Fetch video data for channel metrics calculations
           try {
-            const videosResponse = await getFormattedVideoData([storedChannelId]);
-            setVideoData(videosResponse);
+            // First, get channel's videos
+            const channelVideosResponse = await getChannelVideos(storedChannelId, 20);
             
-            // Extract and count all tags to find most used tags
-            const allTags: string[] = [];
-            const tagCounts: {[key: string]: number} = {};
-            
-            videosResponse.forEach((video: any) => {
-              if (video.tags && video.tags.length) {
-                video.tags.forEach((tag: string) => {
-                  if (!tagCounts[tag]) tagCounts[tag] = 0;
-                  tagCounts[tag]++;
-                  allTags.push(tag);
-                });
-              }
-            });
-            
-            // Get top 5 most used tags
-            const sortedTags = Object.keys(tagCounts).sort((a, b) => tagCounts[b] - tagCounts[a]);
-            setTopTags(sortedTags.slice(0, 5));
-            
-            // Calculate channel metrics
-            if (channelData) {
-              const metrics: ChannelMetrics = {
-                subscriberConversionRate: calculateSubscriberConversionRate({
-                  subscriberCount: parseInt(channelData.statistics.subscriberCount),
-                  viewCount: parseInt(channelData.statistics.viewCount),
-                  publishedAt: channelData.snippet.publishedAt,
-                  commentCount: parseInt(channelData.statistics.commentCount),
-                  hiddenSubscriberCount: channelData.statistics.hiddenSubscriberCount,
-                  videoCount: parseInt(channelData.statistics.videoCount),
-                  topicIds: channelData.topicDetails?.topicIds || [],
-                  topicCategories: channelData.topicDetails?.topicCategories || [],
-                  keywords: channelData.brandingSettings?.channel?.keywords || ''
-                }),
-                channelActivityRatio: calculateChannelActivityRatio({
-                  subscriberCount: parseInt(channelData.statistics.subscriberCount),
-                  viewCount: parseInt(channelData.statistics.viewCount),
-                  publishedAt: channelData.snippet.publishedAt,
-                  commentCount: parseInt(channelData.statistics.commentCount),
-                  hiddenSubscriberCount: channelData.statistics.hiddenSubscriberCount,
-                  videoCount: parseInt(channelData.statistics.videoCount),
-                  topicIds: channelData.topicDetails?.topicIds || [],
-                  topicCategories: channelData.topicDetails?.topicCategories || [],
-                  keywords: channelData.brandingSettings?.channel?.keywords || ''
-                }),
-                audienceRetentionStrength: calculateAudienceRetentionStrength({
-                  subscriberCount: parseInt(channelData.statistics.subscriberCount),
-                  viewCount: parseInt(channelData.statistics.viewCount),
-                  publishedAt: channelData.snippet.publishedAt,
-                  commentCount: parseInt(channelData.statistics.commentCount),
-                  hiddenSubscriberCount: channelData.statistics.hiddenSubscriberCount,
-                  videoCount: parseInt(channelData.statistics.videoCount),
-                  topicIds: channelData.topicDetails?.topicIds || [],
-                  topicCategories: channelData.topicDetails?.topicCategories || [],
-                  keywords: channelData.brandingSettings?.channel?.keywords || ''
-                }),
-                channelGrowthMomentum: calculateChannelGrowthMomentum({
-                  subscriberCount: parseInt(channelData.statistics.subscriberCount),
-                  viewCount: parseInt(channelData.statistics.viewCount),
-                  publishedAt: channelData.snippet.publishedAt,
-                  commentCount: parseInt(channelData.statistics.commentCount),
-                  hiddenSubscriberCount: channelData.statistics.hiddenSubscriberCount,
-                  videoCount: parseInt(channelData.statistics.videoCount),
-                  topicIds: channelData.topicDetails?.topicIds || [],
-                  topicCategories: channelData.topicDetails?.topicCategories || [],
-                  keywords: channelData.brandingSettings?.channel?.keywords || ''
-                }),
-                contentSubscriberEfficiency: calculateContentSubscriberEfficiency({
-                  subscriberCount: parseInt(channelData.statistics.subscriberCount),
-                  viewCount: parseInt(channelData.statistics.viewCount),
-                  publishedAt: channelData.snippet.publishedAt,
-                  commentCount: parseInt(channelData.statistics.commentCount),
-                  hiddenSubscriberCount: channelData.statistics.hiddenSubscriberCount,
-                  videoCount: parseInt(channelData.statistics.videoCount),
-                  topicIds: channelData.topicDetails?.topicIds || [],
-                  topicCategories: channelData.topicDetails?.topicCategories || [],
-                  keywords: channelData.brandingSettings?.channel?.keywords || ''
-                }),
-              };
+            // If no videos are found, set empty arrays
+            if (!channelVideosResponse.items || channelVideosResponse.items.length === 0) {
+              console.log('No videos found for this channel');
+              setVideoData([]);
+              setTopTags([]);
+            } else {
+              // Extract video IDs from search results
+              const videoIds = channelVideosResponse.items
+                .filter(item => item.id && item.id.videoId)
+                .map(item => item.id.videoId as string);
               
-              // Calculate channel efficiency index if we have videos
-              if (videosResponse.length > 0) {
+              console.log('Found video IDs:', videoIds);
+              
+              // If we have video IDs, get the detailed data
+              if (videoIds.length > 0) {
+                const videoDetails = await getFormattedVideoData(videoIds);
+                console.log('Fetched video data:', videoDetails);
+                
+                // Set the video data state
+                setVideoData(videoDetails);
+                
+                // Process tags from the videos
+                const tagCounts: {[key: string]: number} = {};
+                
+                videoDetails.forEach(video => {
+                  if (video.tags && video.tags.length) {
+                    video.tags.forEach(tag => {
+                      tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+                    });
+                  }
+                });
+                
+                // Sort tags by count and get top 5
+                const sortedTags = Object.keys(tagCounts)
+                  .sort((a, b) => tagCounts[b] - tagCounts[a])
+                  .slice(0, 5);
+                
+                setTopTags(sortedTags);
+                
+                // Calculate channel metrics
+                const metrics: ChannelMetrics = {
+                  subscriberConversionRate: calculateSubscriberConversionRate({
+                    subscriberCount: parseInt(channelData.statistics.subscriberCount),
+                    viewCount: parseInt(channelData.statistics.viewCount),
+                    publishedAt: channelData.snippet.publishedAt,
+                    videoCount: parseInt(channelData.statistics.videoCount),
+                    hiddenSubscriberCount: channelData.statistics.hiddenSubscriberCount,
+                    commentCount: parseInt(channelData.statistics.commentCount),
+                    topicIds: channelData.topicDetails?.topicIds || [],
+                    topicCategories: channelData.topicDetails?.topicCategories || [],
+                    keywords: channelData.brandingSettings?.channel?.keywords || ''
+                  }),
+                  channelActivityRatio: calculateChannelActivityRatio({
+                    subscriberCount: parseInt(channelData.statistics.subscriberCount),
+                    viewCount: parseInt(channelData.statistics.viewCount),
+                    publishedAt: channelData.snippet.publishedAt,
+                    videoCount: parseInt(channelData.statistics.videoCount),
+                    hiddenSubscriberCount: channelData.statistics.hiddenSubscriberCount,
+                    commentCount: parseInt(channelData.statistics.commentCount),
+                    topicIds: channelData.topicDetails?.topicIds || [],
+                    topicCategories: channelData.topicDetails?.topicCategories || [],
+                    keywords: channelData.brandingSettings?.channel?.keywords || ''
+                  }),
+                  audienceRetentionStrength: calculateAudienceRetentionStrength({
+                    subscriberCount: parseInt(channelData.statistics.subscriberCount),
+                    viewCount: parseInt(channelData.statistics.viewCount),
+                    publishedAt: channelData.snippet.publishedAt,
+                    videoCount: parseInt(channelData.statistics.videoCount),
+                    hiddenSubscriberCount: channelData.statistics.hiddenSubscriberCount,
+                    commentCount: parseInt(channelData.statistics.commentCount),
+                    topicIds: channelData.topicDetails?.topicIds || [],
+                    topicCategories: channelData.topicDetails?.topicCategories || [],
+                    keywords: channelData.brandingSettings?.channel?.keywords || ''
+                  }),
+                  channelGrowthMomentum: calculateChannelGrowthMomentum({
+                    subscriberCount: parseInt(channelData.statistics.subscriberCount),
+                    viewCount: parseInt(channelData.statistics.viewCount),
+                    publishedAt: channelData.snippet.publishedAt,
+                    videoCount: parseInt(channelData.statistics.videoCount),
+                    hiddenSubscriberCount: channelData.statistics.hiddenSubscriberCount,
+                    commentCount: parseInt(channelData.statistics.commentCount),
+                    topicIds: channelData.topicDetails?.topicIds || [],
+                    topicCategories: channelData.topicDetails?.topicCategories || [],
+                    keywords: channelData.brandingSettings?.channel?.keywords || ''
+                  }),
+                  contentSubscriberEfficiency: calculateContentSubscriberEfficiency({
+                    subscriberCount: parseInt(channelData.statistics.subscriberCount),
+                    viewCount: parseInt(channelData.statistics.viewCount),
+                    publishedAt: channelData.snippet.publishedAt,
+                    videoCount: parseInt(channelData.statistics.videoCount),
+                    hiddenSubscriberCount: channelData.statistics.hiddenSubscriberCount,
+                    commentCount: parseInt(channelData.statistics.commentCount),
+                    topicIds: channelData.topicDetails?.topicIds || [],
+                    topicCategories: channelData.topicDetails?.topicCategories || [],
+                    keywords: channelData.brandingSettings?.channel?.keywords || ''
+                  }),
+                };
+                
+                // Add channel efficiency index
                 metrics.channelEfficiencyIndex = calculateChannelEfficiencyIndex({
                   subscriberCount: parseInt(channelData.statistics.subscriberCount),
                   viewCount: parseInt(channelData.statistics.viewCount),
                   publishedAt: channelData.snippet.publishedAt,
-                  commentCount: parseInt(channelData.statistics.commentCount),
-                  hiddenSubscriberCount: channelData.statistics.hiddenSubscriberCount,
                   videoCount: parseInt(channelData.statistics.videoCount),
+                  hiddenSubscriberCount: channelData.statistics.hiddenSubscriberCount,
+                  commentCount: parseInt(channelData.statistics.commentCount),
                   topicIds: channelData.topicDetails?.topicIds || [],
                   topicCategories: channelData.topicDetails?.topicCategories || [],
                   keywords: channelData.brandingSettings?.channel?.keywords || ''
-                }, videosResponse);
+                }, videoDetails);
+                
+                setChannelMetrics(metrics);
+              } else {
+                // No valid video IDs found
+                setVideoData([]);
+                setTopTags([]);
               }
-              
-              setChannelMetrics(metrics);
             }
-            
           } catch (err) {
-            console.error('Error fetching video data for metrics:', err);
+            console.error('Error fetching video data:', err);
           }
           
           // Fetch other channels info
@@ -395,7 +417,41 @@ export default function ChannelInfoPage() {
 
   // Render the appropriate dashboard component
   const renderDashboard = () => {
-    return <LatestVideos />;
+    return (
+      <>
+        {/* Add Tabs for switching between different dashboard views */}
+        <div className="bg-white rounded-xl shadow-md p-4 border border-gray-100">
+          <div className="flex flex-wrap gap-3">
+            <button 
+              onClick={() => setActiveTab('videos')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                activeTab === 'videos' 
+                  ? 'bg-blue-50 text-blue-700 border border-blue-200' 
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              <Video size={16} />
+              Latest Videos
+            </button>
+            
+            <button 
+              onClick={() => setActiveTab('graphs')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                activeTab === 'graphs' 
+                  ? 'bg-blue-50 text-blue-700 border border-blue-200' 
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              <BarChart4 size={16} />
+              Analytics Graphs
+            </button>
+          </div>
+        </div>
+        
+        {activeTab === 'videos' && <LatestVideos />}
+        {activeTab === 'graphs' && <ChannelGraphs videoData={videoData} channelMetrics={channelMetrics} />}
+      </>
+    );
   };
 
   return (

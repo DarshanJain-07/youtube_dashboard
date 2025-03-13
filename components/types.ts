@@ -160,6 +160,7 @@ export interface FormattedChannelInfo {
 
 export interface FormattedVideoData {
   id: string;
+  title: string;
   publishedAt: string;
   description: string;
   tags: string[];
