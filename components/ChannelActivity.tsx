@@ -339,7 +339,7 @@ const ChannelActivity: React.FC<LatestVideosProps> = ({ channelId }) => {
                     <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-xl border border-blue-100 shadow-sm hover:shadow-md transition-all duration-300">
                       <h4 className="text-lg font-semibold mb-4 text-gray-800 flex items-center">
                         <span className="bg-blue-100 text-blue-700 p-1 mr-2 rounded">📊</span>
-                        YouTube Analytics Metrics
+                        Video Analytics Metrics
                       </h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="bg-white p-3 rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300">
@@ -457,12 +457,6 @@ const ChannelActivity: React.FC<LatestVideosProps> = ({ channelId }) => {
                       <li className="flex justify-between items-center bg-white p-2 rounded-lg border border-gray-100">
                         <span className="font-medium text-gray-600">Category ID:</span> 
                         <span className="bg-gray-100 px-2 py-1 rounded-md text-gray-700">{selectedVideo.categoryId}</span>
-                      </li>
-                      <li className="flex justify-between items-center bg-white p-2 rounded-lg border border-gray-100">
-                        <span className="font-medium text-gray-600">Sponsored Content:</span> 
-                        <span className={`px-2 py-1 rounded-md ${selectedVideo.hasPaidProductPlacement ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-                          {selectedVideo.hasPaidProductPlacement ? 'Yes' : 'No'}
-                        </span>
                       </li>
                     </ul>
                   </div>

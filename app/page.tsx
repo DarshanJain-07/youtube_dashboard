@@ -64,8 +64,6 @@ export default function YoutubePage() {
       {/* Header with proper z-index */}
       <div className="relative z-30">
         <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 h-20 sm:h-28"></div>
-        <div className="absolute inset-0 bg-[url('/grid-pattern.svg')] opacity-10"></div>
-        
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <header className="pt-6 sm:pt-10 pb-24 sm:pb-32 flex justify-between items-center">
             <motion.div 
