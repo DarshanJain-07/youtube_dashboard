@@ -3,11 +3,18 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { getChannelDetails, getFeaturedChannels, getFormattedVideoData, getChannelVideos } from '@/services/youtubeApi';
+import { 
+  getChannelDetails, 
+  getFeaturedChannels, 
+  getFormattedVideoData, 
+  getChannelVideos,
+  Channel,
+  FormattedVideoData
+} from '@/services/youtubeApi';
 import { 
   Users, Eye, Video, Loader2, TrendingUp, 
   Users as UsersIcon, Calendar, Share2, ExternalLink, 
-  Award, Activity, Gauge, Repeat, TrendingUp as TrendingUpIcon, Layers, ArrowUpRight, Clock, Filter, Search, BarChart4
+  Award, Activity, Gauge, Repeat, TrendingUp as TrendingUpIcon, Layers, BarChart4
 } from 'lucide-react';
 import { 
   formatNumber, formatDateLong, 
@@ -25,9 +32,17 @@ import {
   addMarqueeStylesToDocument,
   updateTooltipData
 } from '@/components/utils';
-import { DashboardType, ChannelMetrics, TooltipState } from '@/components/types';
+import { ChannelMetrics, TooltipState } from '@/components/types';
 import ChannelActivity from '@/components/ChannelActivity';
 import ChannelGraphs from '@/components/ChannelGraphs';
+
+// Define interface for other channels
+interface OtherChannel {
+  id: string;
+  title: string;
+  thumbnailUrl: string | null;
+  subscriberCount: string;
+}
 
 // Dashboard components - replace with your actual components
 const LatestVideos = () => {
@@ -62,14 +77,13 @@ const LatestVideos = () => {
 export default function ChannelInfoPage() {
   const router = useRouter();
   const [channelId, setChannelId] = useState<string | null>(null);
-  const [channelData, setChannelData] = useState<any>(null);
+  const [channelData, setChannelData] = useState<Channel | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [otherChannels, setOtherChannels] = useState<any[]>([]);
+  const [otherChannels, setOtherChannels] = useState<OtherChannel[]>([]);
   const [loadingOtherChannels, setLoadingOtherChannels] = useState(false);
   const [channelMetrics, setChannelMetrics] = useState<ChannelMetrics>({} as ChannelMetrics);
-  const [videoData, setVideoData] = useState<any[]>([]);
-  const [topTags, setTopTags] = useState<string[]>([]);
+  const [videoData, setVideoData] = useState<FormattedVideoData[]>([]);
   const [activeTab, setActiveTab] = useState<string>('videos');
   
   // Enhanced tooltip state
@@ -182,7 +196,6 @@ export default function ChannelInfoPage() {
             if (!channelVideosResponse.items || channelVideosResponse.items.length === 0) {
               console.log('No videos found for this channel');
               setVideoData([]);
-              setTopTags([]);
             } else {
               // Extract video IDs from search results
               const videoIds = channelVideosResponse.items
@@ -198,24 +211,6 @@ export default function ChannelInfoPage() {
                 
                 // Set the video data state
                 setVideoData(videoDetails);
-                
-                // Process tags from the videos
-                const tagCounts: {[key: string]: number} = {};
-                
-                videoDetails.forEach(video => {
-                  if (video.tags && video.tags.length) {
-                    video.tags.forEach(tag => {
-                      tagCounts[tag] = (tagCounts[tag] || 0) + 1;
-                    });
-                  }
-                });
-                
-                // Sort tags by count and get top 5
-                const sortedTags = Object.keys(tagCounts)
-                  .sort((a, b) => tagCounts[b] - tagCounts[a])
-                  .slice(0, 5);
-                
-                setTopTags(sortedTags);
                 
                 // Calculate channel metrics
                 const metrics: ChannelMetrics = {
@@ -293,7 +288,6 @@ export default function ChannelInfoPage() {
               } else {
                 // No valid video IDs found
                 setVideoData([]);
-                setTopTags([]);
               }
             }
           } catch (err) {
@@ -329,7 +323,7 @@ export default function ChannelInfoPage() {
               
               // Filter out any null results
               const validChannelsDetails = channelsDetails.filter(Boolean);
-              setOtherChannels(validChannelsDetails);
+              setOtherChannels(validChannelsDetails as OtherChannel[]);
             }
           } catch (err) {
             console.error('Error fetching other channels:', err);
@@ -409,7 +403,6 @@ export default function ChannelInfoPage() {
   const publishedAt = channelData.snippet?.publishedAt;
   const formattedPublishedAt = publishedAt ? formatDateLong(publishedAt) : 'N/A';
   
-  const commentCount = channelData.statistics?.commentCount;
   const hiddenSubscriberCount = channelData.statistics?.hiddenSubscriberCount;
   const topicIds = channelData.topicDetails?.topicIds || [];
   const topicCategories = channelData.topicDetails?.topicCategories || [];

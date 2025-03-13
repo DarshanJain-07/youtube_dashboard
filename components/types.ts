@@ -13,12 +13,6 @@ export interface ActivitySnippet {
   type: 'upload';
 }
 
-// Animation variants
-export interface AnimationVariant {
-  hidden: any;
-  visible: any;
-}
-
 // Dashboard type definition
 export type DashboardType = 'latestvideos';
 

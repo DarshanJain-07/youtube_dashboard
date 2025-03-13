@@ -46,11 +46,9 @@ const animations: Record<string, Variants> = {
 
 export default function YoutubePage() {
   const router = useRouter();
-  const [selectedChannelId, setSelectedChannelId] = useState('');
   const [hasSearchResults, setHasSearchResults] = useState(false);
 
   const handleChannelSelect = (channelId: string) => {
-    setSelectedChannelId(channelId);
     localStorage.setItem('selectedChannelId', channelId);
     router.push('/channelinfo');
   };
@@ -123,7 +121,7 @@ export default function YoutubePage() {
               animate="visible"
             >
               <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-3">
-                Unlock Your YouTube Channel's Potential
+                Unlock Your YouTube Channel&apos;s Potential
               </h2>
               <p className="text-gray-600 max-w-2xl mx-auto">
                 Get powerful insights, track growth metrics, and optimize your content strategy with our advanced analytics platform

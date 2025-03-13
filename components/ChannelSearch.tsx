@@ -257,7 +257,7 @@ export default function ChannelSearch({
               animate="visible"
               className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full"
             >
-              {results.map((channel, index) => (
+              {results.map((channel) => (
                 <motion.div 
                   key={channel.id.channelId}
                   variants={animations.slideIn}

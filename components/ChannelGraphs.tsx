@@ -4,16 +4,18 @@ import {
   AreaChart, Area,
   BarChart, Bar,
   PieChart, Pie, Cell,
-  LineChart, Line,
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  Line
 } from 'recharts';
 import { motion } from 'framer-motion';
 import { formatNumber } from './utils';
+import { ChannelMetrics } from './types';
+import { FormattedVideoData } from '@/services/youtubeApi';
 
 export interface VideoStatsProps {
-  videoData: any[];
-  channelMetrics: any;
+  videoData: FormattedVideoData[];
+  channelMetrics: ChannelMetrics;
 }
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
@@ -26,7 +28,6 @@ const fadeIn = {
 
 const ChannelGraphs: React.FC<VideoStatsProps> = ({ videoData, channelMetrics }) => {
   // Add state for active chart elements
-  const [activeIndex, setActiveIndex] = useState(0);
   const [selectedMetric, setSelectedMetric] = useState<string>('views');
   
   // Early return if no data available
@@ -71,12 +72,13 @@ const ChannelGraphs: React.FC<VideoStatsProps> = ({ videoData, channelMetrics })
   }).sort((a, b) => b.ratio - a.ratio).slice(0, 10);
 
   // Format data for view trends over time
-  const viewTrendData = sortedVideos.slice(0, 10).map(video => ({
-    name: new Date(video.publishedAt).toLocaleDateString(),
-    views: video.viewCount,
-    likes: video.likeCount,
-    comments: video.commentCount
-  })).reverse(); // Reverse to show oldest to newest
+  // Keeping this commented for potential future use
+  // const viewTrendData = sortedVideos.slice(0, 10).map(video => ({
+  //   name: new Date(video.publishedAt).toLocaleDateString(),
+  //   views: video.viewCount,
+  //   likes: video.likeCount,
+  //   comments: video.commentCount
+  // }));
 
   // Format data for top video categories
   const categoryCounts: {[key: string]: number} = {};
@@ -92,11 +94,6 @@ const ChannelGraphs: React.FC<VideoStatsProps> = ({ videoData, channelMetrics })
     value: categoryCounts[category]
   }));
 
-  // Add a function to handle chart element mouse over
-  const handleMouseOver = (data: any, index: number) => {
-    setActiveIndex(index);
-  };
-  
   // Add formatter for YAxis values
   const formatYAxis = (value: number) => {
     return formatNumber(value);
@@ -213,11 +210,12 @@ const ChannelGraphs: React.FC<VideoStatsProps> = ({ videoData, channelMetrics })
               }
             />
             <Tooltip 
-              formatter={(value: number) => 
-                selectedMetric === 'engagement' 
+              formatter={(value: number | string) => {
+                if (typeof value === 'string') return value;
+                return selectedMetric === 'engagement' 
                   ? `${value.toFixed(2)}%` 
-                  : formatNumber(value)
-              }
+                  : formatNumber(value);
+              }}
               labelFormatter={(label) => `Date: ${label}`}
             />
             <Legend />
@@ -228,7 +226,7 @@ const ChannelGraphs: React.FC<VideoStatsProps> = ({ videoData, channelMetrics })
                 stroke="#8884d8" 
                 fill="url(#colorViews)" 
                 name="Views"
-                activeDot={{ r: 8, onClick: (e: any) => console.log(e) }}
+                activeDot={{ r: 8 }}
               />
             )}
             {selectedMetric === 'likes' && (
@@ -238,7 +236,7 @@ const ChannelGraphs: React.FC<VideoStatsProps> = ({ videoData, channelMetrics })
                 stroke="#82ca9d" 
                 fill="url(#colorLikes)" 
                 name="Likes"
-                activeDot={{ r: 8, onClick: (e: any) => console.log(e) }}
+                activeDot={{ r: 8 }}
               />
             )}
             {selectedMetric === 'comments' && (
@@ -248,7 +246,7 @@ const ChannelGraphs: React.FC<VideoStatsProps> = ({ videoData, channelMetrics })
                 stroke="#ffc658" 
                 fill="url(#colorComments)" 
                 name="Comments"
-                activeDot={{ r: 8, onClick: (e: any) => console.log(e) }}
+                activeDot={{ r: 8 }}
               />
             )}
             {selectedMetric === 'engagement' && (
@@ -258,7 +256,7 @@ const ChannelGraphs: React.FC<VideoStatsProps> = ({ videoData, channelMetrics })
                 stroke="#ff7c43" 
                 fill="url(#colorEngagement)" 
                 name="Engagement %"
-                activeDot={{ r: 8, onClick: (e: any) => console.log(e) }}
+                activeDot={{ r: 8 }}
               />
             )}
           </AreaChart>
@@ -311,7 +309,6 @@ const ChannelGraphs: React.FC<VideoStatsProps> = ({ videoData, channelMetrics })
               data={topVideosByViews}
               layout="vertical"
               margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-              onMouseMove={(data: any) => data.activeTooltipIndex !== undefined && setActiveIndex(data.activeTooltipIndex)}
             >
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis type="number" tickFormatter={formatYAxis} />
@@ -330,7 +327,6 @@ const ChannelGraphs: React.FC<VideoStatsProps> = ({ videoData, channelMetrics })
                 dataKey="views" 
                 fill="#8884d8" 
                 name="Views"
-                onMouseOver={handleMouseOver}
               >
                 {topVideosByViews.map((entry, index) => (
                   <Cell 
@@ -434,7 +430,7 @@ const ChannelGraphs: React.FC<VideoStatsProps> = ({ videoData, channelMetrics })
                 <PolarRadiusAxis angle={30} domain={[0, 10]} />
                 <Radar name="Performance" dataKey="value" stroke="#8884d8" fill="#8884d8" fillOpacity={0.6} />
                 <Legend />
-                <Tooltip formatter={(value: any) => typeof value === 'number' ? value.toFixed(2) : value} />
+                <Tooltip formatter={(value: number | string) => typeof value === 'number' ? value.toFixed(2) : value} />
               </RadarChart>
             </ResponsiveContainer>
           ) : (
