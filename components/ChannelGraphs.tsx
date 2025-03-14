@@ -250,7 +250,7 @@ const ChannelGraphs: React.FC<VideoStatsProps> = ({ videoData, channelMetrics })
               width={isMobile ? 45 : 60}
             />
             <Tooltip 
-              formatter={(value: number | string, name: string, props: any) => {
+              formatter={(value: number | string) => {
                 if (typeof value === 'string') return value;
                 return selectedMetric === 'engagement' 
                   ? `${value.toFixed(2)}%` 
